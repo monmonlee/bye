@@ -12,15 +12,29 @@ mkdirSync('./print', { recursive: true });
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 const cells = tokens.map(t => {
-  // qrencode -t SVG：容錯等級 M，夠應付小卡被折到
-  const svg = execFileSync('qrencode', ['-t','SVG','-l','M','-m','0','-s','8','-o','-', t.url],
+  // qrencode -t SVG：容錯等級 H（30%），中間挖掉放名字也還掃得到
+  const svg = execFileSync('qrencode', ['-t','SVG','-l','H','-m','0','-s','8','-o','-', t.url],
                            { encoding:'utf8' });
   writeFileSync(`./qr/${t.key}.svg`, svg);
   const inner = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
   const vb = (svg.match(/viewBox="([^"]+)"/) || [,'0 0 100 100'])[1];
+
+  // 中央名牌：白底挖空 + 名字。面積控制在 ~6%，遠低於 H 級的 30% 容錯上限
+  const side = parseFloat(vb.split(/\s+/)[2]) || 100;
+  const bw = side * 0.40, bh = side * 0.155;
+  const bx = (side - bw) / 2, by = (side - bh) / 2;
+  const label = String(t.name);
+  // 字級依字數縮放，確保塞得進名牌
+  const fs = Math.min(bh * 0.70, (bw * 0.86) / (label.length * 0.58));
+  const badge = `<rect x="${bx.toFixed(2)}" y="${by.toFixed(2)}" `
+    + `width="${bw.toFixed(2)}" height="${bh.toFixed(2)}" fill="#fff"/>`
+    + `<text x="${(side/2).toFixed(2)}" y="${(side/2).toFixed(2)}" `
+    + `text-anchor="middle" dominant-baseline="central" `
+    + `font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="700" `
+    + `font-size="${fs.toFixed(2)}" fill="#111">${esc(label)}</text>`;
   return `<div class="cell">
   <div class="name">${esc(t.name)}</div>
-  <svg class="qr" viewBox="${vb}" shape-rendering="crispEdges">${inner}</svg>
+  <svg class="qr" viewBox="${vb}" shape-rendering="crispEdges">${inner}${badge}</svg>
   <div class="foot">掃我 · 這張只有你打得開</div>
 </div>`;
 }).join('\n');
