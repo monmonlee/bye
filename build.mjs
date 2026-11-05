@@ -39,6 +39,25 @@ for (const card of CARDS) {
   tokens.push({ key: card.key, name: card.name, token, url: BASE + '#' + token });
 }
 
+// ── 印出去之後的保護 ──────────────────────────────────────
+// token 是綁在 key 上的。改 name / msg 不會動到 token，
+// 但「改 key」或「刪人」會讓那個人已印出的 QR 失效，所以這裡擋下來。
+const nowKeys = new Set(CARDS.map(c => c.key));
+const lost = existing.filter(t => !nowKeys.has(t.key));
+if (lost.length) {
+  console.error('\n✗ 停止：以下 key 在 cards.src.js 裡不見了（被改名或刪掉）：');
+  for (const t of lost) console.error(`    ${t.key}  (${t.name})`);
+  console.error('  這些人已印出的 QR 會失效。');
+  console.error('  → 想改顯示名字請改 name，不要改 key；真的要刪人請先手動從 tokens.json 移除。\n');
+  process.exit(1);
+}
+const added = tokens.filter(t => !prev.has(t.key));
+if (existing.length && added.length) {
+  console.warn(`! 新增了 ${added.length} 人：${added.map(t => t.key).join(', ')}`);
+  console.warn('  他們的 QR 還沒印，記得補印（舊的不受影響）。');
+}
+
+
 writeFileSync('./cards.enc.json', JSON.stringify({ v: 1, entries }, null, 0));
 writeFileSync('./fallback.json', JSON.stringify(FALLBACK, null, 2));
 writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
