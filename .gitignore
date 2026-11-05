@@ -1,0 +1,6 @@
+# 明文名單與 token 清單絕對不上傳
+cards.src.js
+tokens.json
+qr/
+print/
+.DS_Store

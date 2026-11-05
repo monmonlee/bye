@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>amelie@cloudmile — last login</title>
+<meta name="description" content="掃到了就進來打個名字吧。">
+<meta name="theme-color" content="#07100b">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<style>
+  :root{
+    --bg:#07100b; --fg:#5bf08a; --dim:#2e7d4f; --warn:#ffd166; --err:#ff6b6b;
+    --glow:0 0 6px rgba(91,240,138,.45);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--fg); font-family:var(--mono);
+    font-size:15px; line-height:1.65; letter-spacing:.2px;
+    text-shadow:var(--glow); overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+  }
+  /* CRT 掃描線 + 暈影 */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
+    background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.22) 2px 4px);
+    mix-blend-mode:multiply;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:10;
+    background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.55) 100%);
+  }
+  #screen{
+    position:relative; z-index:1; min-height:100%;
+    padding:max(14px,env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+    max-width:760px; margin:0 auto;
+    animation:flicker 7s infinite steps(1);
+  }
+  @keyframes flicker{0%,97%{opacity:1}97.5%{opacity:.86}98%{opacity:1}98.5%{opacity:.92}99%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){#screen{animation:none}body::before{display:none}}
+
+  pre{margin:0; white-space:pre-wrap; word-break:break-word; font:inherit}
+  .banner{color:var(--fg); font-size:clamp(9px,3.1vw,13px); line-height:1.25; margin-bottom:10px; opacity:.95}
+  .dim{color:var(--dim)}
+  .warn{color:var(--warn); text-shadow:0 0 6px rgba(255,209,102,.4)}
+  .err{color:var(--err); text-shadow:0 0 6px rgba(255,107,107,.4)}
+  .card{
+    border-left:2px solid var(--dim); padding:4px 0 4px 12px; margin:6px 0 2px;
+  }
+  .ps1{color:var(--dim)}
+  .ps1 b{color:var(--fg); font-weight:400}
+
+  /* 輸入列 */
+  #inputline{display:flex; align-items:baseline; gap:8px; margin-top:12px}
+  #inputline.hide{display:none}
+  #ps{white-space:nowrap; color:var(--dim)}
+  #ps b{color:var(--fg); font-weight:400}
+  #cmd{
+    flex:1 1 auto; min-width:0;
+    background:transparent; border:0; outline:0; padding:0;
+    color:var(--fg); font:inherit; letter-spacing:inherit;
+    text-shadow:var(--glow); caret-color:transparent;
+  }
+  #cmd::placeholder{color:#1f5636; text-shadow:none}
+  #caret{
+    display:inline-block; width:.62em; height:1.05em; background:var(--fg);
+    box-shadow:var(--glow); vertical-align:-.18em; margin-left:-4px;
+    animation:blink 1.05s steps(1) infinite;
+  }
+  #caret.off{opacity:.25; animation:none}
+  @keyframes blink{50%{opacity:0}}
+
+  .hint{margin-top:16px; color:var(--dim); font-size:.86em; line-height:1.7}
+  .hint kbd{
+    border:1px solid var(--dim); border-radius:3px; padding:0 4px; font:inherit; font-size:.95em;
+  }
+  #skip{
+    position:fixed; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:12;
+    background:rgba(7,16,11,.9); border:1px solid var(--dim); color:var(--dim);
+    font:inherit; font-size:12px; padding:8px 12px; border-radius:4px; display:none;
+  }
+  #skip.show{display:block}
+</style>
+</head>
+<body>
+<div id="screen" role="main">
+  <pre class="banner" aria-hidden="true">┌──────────────────────────────────────┐
+│  A M E L I E . L E E                 │
+│  last login: 2026-11-06  (final)     │
+└──────────────────────────────────────┘</pre>
+  <pre id="out" aria-live="polite"></pre>
+
+  <div id="inputline" class="hide">
+    <span id="ps"><b>amelie@cloudmile</b><span class="dim">:~$</span></span>
+    <input id="cmd" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           enterkeyhint="go" inputmode="text" aria-label="輸入指令">
+    <span id="caret"></span>
+  </div>
+
+  <div class="hint" id="hint" hidden>
+    想玩的話可以輸入 <kbd>help</kbd>。
+  </div>
+</div>
+<button id="skip" type="button">跳過動畫 ▸▸</button>
+
+<script>
+(function(){
+  "use strict";
+  var out = document.getElementById('out');
+  var line = document.getElementById('inputline');
+  var cmd = document.getElementById('cmd');
+  var hint = document.getElementById('hint');
+  var skipBtn = document.getElementById('skip');
+  var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* ================= 輸出引擎 ================= */
+  var queue = [], running = false, skipping = false;
+  function scroll(){ window.scrollTo(0, document.body.scrollHeight); }
+  function push(op){ queue.push(op); if(!running) run(); }
+  function say(t, cls, sp){ push({k:'type', text:String(t), cls:cls||'', speed:sp||20}); }
+  function print(t, cls){ push({k:'print', text:String(t), cls:cls||''}); }
+  function wait(ms){ push({k:'wait', ms:ms}); }
+  function then(fn){ push({k:'fn', fn:fn}); }
+
+  function run(){
+    running = true;
+    var op = queue.shift();
+    if(!op){ running = false; skipping = false; skipBtn.classList.remove('show'); return; }
+    if(op.k === 'fn'){ op.fn(); return run(); }
+    if(op.k === 'wait'){ return (skipping || reduce) ? run() : void setTimeout(run, op.ms); }
+    var span = document.createElement('span');
+    if(op.cls) span.className = op.cls;
+    out.appendChild(span);
+    var tail = document.createTextNode('\n');
+    if(op.k === 'print' || skipping || reduce){
+      span.textContent = op.text; out.appendChild(tail); scroll(); return run();
+    }
+    skipBtn.classList.add('show');
+    var i = 0, chars = Array.from(op.text);
+    (function tick(){
+      if(skipping){ span.textContent = op.text; out.appendChild(tail); scroll(); return run(); }
+      span.textContent += chars[i++];
+      if(i >= chars.length){ out.appendChild(tail); scroll(); return run(); }
+      var c = chars[i-1];
+      scroll();
+      setTimeout(tick, /[。，、！？\.,!?]/.test(c) ? op.speed * 7 : op.speed);
+    })();
+  }
+  function doSkip(){ if(running) skipping = true; }
+  skipBtn.addEventListener('click', doSkip);
+
+  /* ================= 解密 ================= */
+  var te = new TextEncoder(), td = new TextDecoder();
+  function b64uToBytes(s){
+    s = String(s).replace(/-/g,'+').replace(/_/g,'/');
+    while(s.length % 4) s += '=';
+    var bin = atob(s), a = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) a[i] = bin.charCodeAt(i);
+    return a;
+  }
+  function hex(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){
+      return ('0'+b.toString(16)).slice(-2);
+    }).join('');
+  }
+  async function sha256(str){ return crypto.subtle.digest('SHA-256', te.encode(str)); }
+
+  async function unlock(token){
+    var res = await fetch('cards.enc.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('payload ' + res.status);
+    var data = await res.json();
+    var id = hex(await sha256('id:' + token)).slice(0, 16);
+    var e = data.entries[id];
+    if(!e) return null;
+    var key = await crypto.subtle.importKey('raw', await sha256('key:' + token), 'AES-GCM', false, ['decrypt']);
+    var pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64uToBytes(e.iv)}, key, b64uToBytes(e.ct));
+    return JSON.parse(td.decode(pt));
+  }
+  async function getFallback(){
+    try { return await (await fetch('fallback.json', {cache:'no-store'})).json(); }
+    catch(_) { return { name:'unknown', msg:'這個連結沒有對應到任何人。' }; }
+  }
+
+  /* ================= 卡片 ================= */
+  function showCard(card, opts){
+    opts = opts || {};
+    var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
+    print('');
+    say('$ cat farewell/' + file + '.txt', 'ps1', 22);
+    wait(420);
+    String(card.msg || '').split('\n').forEach(function(l){
+      if(l === '') print(''); else say(l, 'card', 27);
+    });
+    wait(500);
+    print('');
+    print('— amelie', 'dim');
+    if(!opts.quiet){
+      print('');
+      say('（這張卡只有你打得開。）', 'dim', 16);
+    }
+    prompt();
+  }
+
+  /* ================= 指令彩蛋 ================= */
+  var COMMANDS = {
+    help: function(){
+      print('');
+      print('可用指令：', 'dim');
+      ['  again      再放一次你的卡片',
+       '  ls         看看 farewell/ 裡有什麼',
+       '  whoami     ？',
+       '  clear      清螢幕',
+       '  credits    這東西是誰做的',
+       '  （還有幾個沒寫在這，自己試）'].forEach(function(l){ print(l, 'dim'); });
+      prompt();
+    },
+    again: function(){ if(window.__card) showCard(window.__card, {quiet:true}); else { print(''); print('沒有可以重播的卡片。','dim'); prompt(); } },
+    ls: function(){
+      print('');
+      print('farewell/', 'dim');
+      print('  16 files, 0 regrets', 'dim');
+      print('  （其他 15 個你打不開，那是別人的。）', 'dim');
+      prompt();
+    },
+    whoami: function(){
+      print('');
+      say('你是一個願意掃陌生 QR code 的人。這很危險，但我很感謝。', 'warn', 26);
+      prompt();
+    },
+    clear: function(){ out.textContent = ''; prompt(); },
+    credits: function(){
+      print('');
+      ['built in one night with Claude Code',
+       'by amelie, on her last day',
+       'stack: 一個 html、一包 AES-GCM、零個後端'].forEach(function(l){ print(l, 'dim'); });
+      prompt();
+    },
+    exit: function(){
+      print('');
+      say('logout', 'dim', 20); wait(400);
+      say('Connection to cloudmile closed.', 'dim', 22); wait(700);
+      print('');
+      say('…騙你的。關掉分頁才算數。', 'warn', 26);
+      prompt();
+    },
+    sudo: function(){
+      print('');
+      print('amelie is not in the sudoers file.', 'err');
+      print('This incident has been reported.（報給誰？我已經離職了。）', 'err');
+      prompt();
+    },
+    rm: function(raw){
+      print('');
+      if(/-rf?\b/.test(raw)){
+        say('rm: 正在刪除 /…', 'err', 30); wait(800);
+        print('rm: 開玩笑的。這裡沒有東西可以刪，只有話可以說。', 'warn');
+      } else print('rm: 這台機器唯讀。', 'dim');
+      prompt();
+    },
+    cat: function(){ print(''); print('cat: 你只有一張卡的讀取權限。試試 again。', 'dim'); prompt(); }
+  };
+
+  function handle(raw){
+    var input = String(raw).trim();
+    if(!input) return prompt();
+    var head = input.split(/\s+/)[0].toLowerCase();
+    if(COMMANDS[head]) return COMMANDS[head](input);
+    print('');
+    print('command not found: ' + head, 'err');
+    print('輸入 help 看看有什麼。', 'dim');
+    prompt();
+  }
+
+  /* ================= 輸入列 ================= */
+  function prompt(){
+    then(function(){
+      line.classList.remove('hide');
+      hint.hidden = false;
+      cmd.value = '';
+      cmd.placeholder = 'help';
+      setTimeout(scroll, 0);
+    });
+  }
+  cmd.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    if(running) return doSkip();
+    var v = cmd.value;
+    print('');
+    print('amelie@cloudmile:~$ ' + v, 'ps1');
+    line.classList.add('hide'); hint.hidden = true; cmd.blur();
+    handle(v);
+  });
+  document.addEventListener('click', function(e){
+    if(e.target === skipBtn) return;
+    if(running) return doSkip();
+    if(!line.classList.contains('hide')) cmd.focus();
+  });
+
+  /* ================= 開機 ================= */
+  var token = (location.hash || '').replace(/^#/, '').trim();
+
+  function boot(card){
+    say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
+    print('Authenticating with card key… ok', 'dim'); wait(200);
+    print('Mounting /farewell … ok', 'dim'); wait(320);
+    print('');
+    say('嗨嗨，今天我就要離職了～', '', 32); wait(420);
+    say('為感謝你在這段時間的協助，我寫了卡片給你', '', 32); wait(520);
+    print('');
+    say('$ whoami', 'ps1', 24); wait(380);
+    say('> ' + (card.name || 'unknown'), '', 60); wait(500);
+    then(function(){ showCard(card); });
+  }
+
+  (async function start(){
+    var card = null;
+    if(token){
+      try { card = await unlock(token); }
+      catch(err){ console.error(err); }
+    }
+    if(!card){
+      var fb = await getFallback();
+      say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
+      print('Authenticating with card key… failed', 'err'); wait(400);
+      print('');
+      then(function(){ showCard(fb, {quiet:true}); });
+      return;
+    }
+    window.__card = card;
+    boot(card);
+  })();
+})();
+
+</script>
+</body>
+</html>
