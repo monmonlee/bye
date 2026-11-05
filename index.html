@@ -390,7 +390,7 @@
 
       function frame(now){
         var e = now - start;
-        var p = { t:0, reveal:0, dissolve:0, tint:0 };
+        var p = { t:0, reveal:0, dissolve:0, tint:0, collapse:0, anim:e };
         if(e < T_WIPE){
           var w = e / T_WIPE;
           p.reveal = w * w * (3 - 2 * w);           // smoothstep，像掃描線拉下來
@@ -406,7 +406,10 @@
                         1 + Math.floor((e - T_WIPE - T_SUN) / (T_TITLE / 2))), e);
         } else {
           var b2 = Math.min(1, (e - T_WIPE - T_SUN - T_TITLE) / T_BREAK);
-          p.reveal = 1; p.t = 1; p.dissolve = b2; p.tint = Math.min(1, b2 * 1.25);
+          p.reveal = 1; p.t = 1;
+          p.dissolve = Math.min(1, b2 * 1.6);
+          p.tint = Math.min(1, b2 * 1.25);
+          p.collapse = Math.max(0, (b2 - 0.38) / 0.62);   // CRT 關機收合
           if(b2 > 0.05) beat(-1, e);
         }
         PI.renderFrame(img, W, H, p);

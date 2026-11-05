@@ -26,13 +26,16 @@
     var t = Math.max(0, Math.min(1, (x-e0)/(e1-e0)));
     return t*t*(3-2*t);
   }
-  function ridge(u){
+  function ridge(u){        // 近山（深）
     return 0.615 - 0.085*Math.sin(u*4.1+0.8) - 0.045*Math.sin(u*9.7+2.3) - 0.02*Math.sin(u*21.0);
+  }
+  function farRidge(u){     // 遠山（淺，壓在近山後面）
+    return 0.560 - 0.070*Math.sin(u*2.7-1.4) - 0.030*Math.sin(u*6.3+0.6);
   }
 
   /* 雲層密度場：幾條帶狀雲疊加，t 讓它緩慢飄移 */
-  function cloudField(u, v, t){
-    var drift = t * 0.18;
+  function cloudField(u, v, t, anim){
+    var drift = t * 0.18 + (anim || 0) * 0.016;
     var d = 0;
     d += bump(v, 0.13, 0.105) * (0.88 + 0.32*Math.sin((u+drift)*3.3 + 1.1));
     d += bump(v, 0.26, 0.095) * (0.85 + 0.35*Math.sin((u-drift*0.7)*5.1 + 3.4));
@@ -46,11 +49,14 @@
   }
 
   /* 撥開：以太陽為中心向兩側退開的缺口，open 0→1 */
-  function gapMask(u, v, open){
-    var half = 0.75*open;                        // 缺口半寬（t=0 完全閉合）
-    var edge = 0.08 + 0.17*open;                 // 邊緣羽化
-    var dx = Math.abs(u - SUN_X);
-    return 1 - smoothstep(half - edge, half, dx); // 1 = 完全撥開
+  function gapMask(u, v, open, sunY, asp){
+    // 以太陽為圓心向外擴張的洞（不是貫穿天空的直柱）
+    // dy 要乘長寬比，否則在螢幕上會變成瘦高的拱門
+    var dx = u - SUN_X, dy = (v - (sunY || 0.36)) * (asp || 1) * 0.85;
+    var d  = Math.sqrt(dx*dx + dy*dy);
+    var half = 0.02 + 0.80*open;                 // 洞的半徑
+    var edge = 0.07 + 0.18*open;                 // 邊緣羽化
+    return 1 - smoothstep(half - edge, half, d); // 1 = 完全撥開
   }
 
   function skyBase(v, horizon){
@@ -58,14 +64,14 @@
   }
 
   /* 主場景。t 為 0..1：0＝滿天雲、1＝萬里無雲豔陽高照 */
-  function scene(u, v, t, asp){
-    asp = asp || 1;
+  function scene(u, v, t, asp, anim){
+    asp = asp || 1; anim = anim || 0;
     var horizon = 0.615;
     var sunY = 0.46 - 0.17*t;                    // 太陽升起
     var sunR = 0.090 + 0.028*t;                  // 越來越盛
     var open = smoothstep(0.08, 0.92, t);
 
-    var cloud = cloudField(u, v, t) * (1 - gapMask(u, v, open));
+    var cloud = cloudField(u, v, t, anim) * (1 - gapMask(u, v, open, sunY, asp));
     var occl  = Math.min(1, cloud * 1.9);        // 雲遮住太陽的程度
 
     var dx = u - SUN_X, dy = (v - sunY)*asp;
@@ -76,21 +82,27 @@
     val += (0.40 + 0.30*t) * Math.exp(-Math.pow(d/(sunR*3.6), 2)) * (1 - 0.85*occl);
 
     // 雲本身：被照亮的一面偏亮，背光偏暗
-    var lit = Math.exp(-Math.pow(d/0.26, 2));
+    var lit = Math.exp(-Math.pow(d/0.34, 2));
     var cw = Math.min(1, cloud);
-    val = val*(1 - 0.90*cw) + cw*(0.66 + 0.30*lit + 0.08*t);
+    val = val*(1 - 0.90*cw) + cw*(0.70 + 0.22*lit + 0.08*t);
 
+    var rfar = farRidge(u);
     var r = ridge(u);
+    if (v > rfar && v <= r) {                     // 遠山：比天空暗、比近山亮
+      var fd = (v - rfar)/Math.max(0.001, r - rfar);
+      val = 0.34 - 0.07*fd + 0.04*t;
+      if (v < rfar + 0.008) val = 0.52 + 0.16*t;  // 遠山稜線受光
+    }
     if (v > r) {
       if (v < r + 0.012) {
-        val = 0.50 + 0.22*t;                      // 稜線反光
+        val = 0.50 + 0.22*t;                      // 近山稜線反光
       } else {
         var depth = (v - r)/(1 - r);
-        val = 0.26 - 0.10*depth + 0.028*Math.sin(u*37.0)*(1-depth);
+        val = 0.25 - 0.09*depth;
         if (v > 0.80) {                            // 水面倒影
           var rv = 2*0.80 - v + (0.80 - r);
           var dw = (v - 0.80)/0.20;
-          var band = 0.62 + 0.38*Math.sin((v-0.80)*(40.0+150.0*dw) + u*2.0);
+          var band = 0.80 + 0.20*Math.sin((v-0.80)*(34.0+90.0*dw) + u*2.0 - anim*2.4);
           var rd = Math.sqrt(Math.pow(u-SUN_X,2) + Math.pow((rv-sunY)*asp,2));
           var sky = skyBase(rv, horizon)
                   + 0.95*Math.max(0, 1 - rd/sunR)
@@ -102,25 +114,72 @@
     return Math.max(0, Math.min(1, val));
   }
 
+  // DITHER < 1 → 只有「夾在兩階之間」的像素才抖動，
+  // 接近某一階的大片區域直接吃實色（真正的像素畫是這樣，不是整張都是網點）
+  var DITHER = 0.70;
+  /* 站在近山稜線上的小人剪影（3x6），給畫面一個尺度 */
+  var FIGURE = [
+    0,1,0,
+    1,1,1,
+    0,1,0,
+    0,1,0,
+    1,0,1,
+    1,0,1
+  ];
+  var FIG_W = 3, FIG_H = 6;
+  function drawFigure(data, W, H, pal, anim){
+    var u = 0.70 + 0.012*Math.sin(anim*0.5);        // 極緩慢地晃一下，像在呼吸
+    var fx = Math.round(u*W) - (FIG_W >> 1);
+    var fy = Math.round(ridge(u)*H) - FIG_H;
+    var c = pal[0];
+    for (var y = 0; y < FIG_H; y++){
+      var yy = fy + y; if (yy < 0 || yy >= H) continue;
+      for (var x = 0; x < FIG_W; x++){
+        if (!FIGURE[y*FIG_W + x]) continue;
+        var xx = fx + x; if (xx < 0 || xx >= W) continue;
+        var i = (yy*W + xx)*4;
+        data[i] = c[0]; data[i+1] = c[1]; data[i+2] = c[2];
+      }
+    }
+  }
+
   function quantize(val, x, y, levels){
     var th = (BAYER[(y & 3)*4 + (x & 3)] + 0.5)/16;
     var scaled = val*(levels - 1);
     var base = Math.floor(scaled);
-    var idx = base + ((scaled - base) > th ? 1 : 0);
+    var frac = scaled - base;
+    var cut = 0.5 + (th - 0.5)*DITHER;
+    var idx = base + (frac > cut ? 1 : 0);
     return Math.max(0, Math.min(levels - 1, idx));
   }
 
   function renderFrame(img, W, H, p){
     var pal = mixPal(SUNSET, PHOSPHOR, p.tint);
+    var anim = (p.anim || 0) / 1000;
+    var collapse = p.collapse || 0;
+    var halfH = (1 - collapse) * 0.5;
     var data = img.data, i = 0, asp = H/W;
     for (var y = 0; y < H; y++){
       var v = y/H, shown = v <= p.reveal;
+      // CRT 關機：畫面往中央一條水平線收合
+      if (collapse > 0 && Math.abs(v - 0.5) > halfH){
+        for (var bx = 0; bx < W; bx++, i += 4){
+          data[i] = pal[0][0]; data[i+1] = pal[0][1]; data[i+2] = pal[0][2]; data[i+3] = 255;
+        }
+        continue;
+      }
+      if (collapse > 0.72 && Math.abs(v - 0.5) < 0.012){
+        for (var lx = 0; lx < W; lx++, i += 4){
+          data[i] = pal[3][0]; data[i+1] = pal[3][1]; data[i+2] = pal[3][2]; data[i+3] = 255;
+        }
+        continue;
+      }
       for (var x = 0; x < W; x++, i += 4){
         var c;
         if (!shown){
           c = pal[0];
         } else {
-          var val = scene(x/W, v, p.t, asp);
+          var val = scene(x/W, v, p.t, asp, anim);
           if (p.dissolve > 0){
             var bias = (BAYER[(y & 3)*4 + (x & 3)] + 0.5)/16;
             var pressure = p.dissolve*(0.55 + 0.75*v);
@@ -131,6 +190,7 @@
         data[i]=c[0]; data[i+1]=c[1]; data[i+2]=c[2]; data[i+3]=255;
       }
     }
+    if (p.reveal >= 1 && !collapse) drawFigure(data, W, H, pal, anim);
     return img;
   }
 
@@ -144,10 +204,10 @@
     if (_maskCache[key]) return _maskCache[key];
     if (typeof document === 'undefined') return null;
 
-    var FONT = '700 SIZEpx ui-monospace, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", monospace';
+    var FONT = '600 SIZEpx ui-monospace, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", monospace';
     var maxW = W * 0.86;
     var probe = document.createElement('canvas').getContext('2d');
-    var size = Math.max(9, Math.round(W * 0.17));
+    var size = Math.max(9, Math.round(W * 0.185));
     while (size > 9) {                                  // 量到塞得下為止，絕不換行
       probe.font = FONT.replace('SIZE', size);
       if (probe.measureText(text).width <= maxW) break;
@@ -167,7 +227,7 @@
 
     var d = g.getImageData(0, 0, w, h).data;
     var bits = new Uint8Array(w*h);
-    for (var i = 0, n = w*h; i < n; i++) bits[i] = d[i*4+3] > 118 ? 1 : 0;   // 二值化
+    for (var i = 0, n = w*h; i < n; i++) bits[i] = d[i*4+3] > 132 ? 1 : 0;   // 二值化（門檻偏高，讓黏在一起的筆畫分開）
     var m = { w:w, h:h, bits:bits };
     _maskCache[key] = m;
     return m;
