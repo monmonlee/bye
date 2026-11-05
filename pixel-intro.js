@@ -9,7 +9,7 @@
   var BAYER = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
 
   // 色盤：由陰天藍 → 奶油金（撥雲見日），最後整盤轉成終端機綠
-  var SUNSET   = [[20,22,42],[44,62,96],[63,109,158],[242,214,173]];
+  var SUNSET   = [[22,28,54],[62,90,136],[168,190,214],[246,239,223]];
   var PHOSPHOR = [[7,16,11],[18,54,35],[46,125,79],[91,240,138]];
 
   var SUN_X = 0.46;
@@ -34,13 +34,15 @@
   function cloudField(u, v, t){
     var drift = t * 0.18;
     var d = 0;
-    d += bump(v, 0.13, 0.085) * (0.62 + 0.38*Math.sin((u+drift)*3.3 + 1.1));
-    d += bump(v, 0.26, 0.075) * (0.60 + 0.40*Math.sin((u-drift*0.7)*5.1 + 3.4));
-    d += bump(v, 0.37, 0.062) * (0.58 + 0.42*Math.sin((u+drift*1.3)*2.6 + 0.3));
-    d += bump(v, 0.47, 0.050) * (0.55 + 0.45*Math.sin((u-drift)*7.4 + 2.0));
+    d += bump(v, 0.13, 0.105) * (0.88 + 0.32*Math.sin((u+drift)*3.3 + 1.1));
+    d += bump(v, 0.26, 0.095) * (0.85 + 0.35*Math.sin((u-drift*0.7)*5.1 + 3.4));
+    d += bump(v, 0.37, 0.082) * (0.82 + 0.38*Math.sin((u+drift*1.3)*2.6 + 0.3));
+    d += bump(v, 0.47, 0.068) * (0.78 + 0.42*Math.sin((u-drift)*7.4 + 2.0));
     // 大面積雲幕：讓開場整片天都是雲，而不是幾條帶子
-    d += bump(v, 0.30, 0.230) * (0.34 + 0.22*Math.sin((u + drift*0.4)*2.1 + 0.9));
-    return Math.max(0, Math.min(1.15, d));
+    d += bump(v, 0.30, 0.260) * (0.62 + 0.26*Math.sin((u + drift*0.4)*2.1 + 0.9));
+    // 高頻細節：讓雲邊是塊狀的，而不是一團平滑光暈
+    d += 0.16*Math.sin(u*23.0 + v*17.0 + drift*3.0) * bump(v, 0.30, 0.260);
+    return Math.max(0, Math.min(1.6, d));
   }
 
   /* 撥開：以太陽為中心向兩側退開的缺口，open 0→1 */
@@ -64,18 +66,19 @@
     var open = smoothstep(0.08, 0.92, t);
 
     var cloud = cloudField(u, v, t) * (1 - gapMask(u, v, open));
-    var occl  = Math.min(1, cloud * 1.35);       // 雲遮住太陽的程度
+    var occl  = Math.min(1, cloud * 1.9);        // 雲遮住太陽的程度
 
     var dx = u - SUN_X, dy = (v - sunY)*asp;
     var d = Math.sqrt(dx*dx + dy*dy);
 
     var val = skyBase(v, horizon) * (0.78 + 0.22*t);
-    val += (1.25 + 0.45*t) * Math.max(0, 1 - d/sunR) * (1 - 0.92*occl);
-    val += (0.40 + 0.30*t) * Math.exp(-Math.pow(d/(sunR*3.6), 2)) * (1 - 0.70*occl);
+    val += (1.25 + 0.45*t) * Math.max(0, 1 - d/sunR) * (1 - 0.97*occl);
+    val += (0.40 + 0.30*t) * Math.exp(-Math.pow(d/(sunR*3.6), 2)) * (1 - 0.85*occl);
 
     // 雲本身：被照亮的一面偏亮，背光偏暗
     var lit = Math.exp(-Math.pow(d/0.26, 2));
-    val = val*(1 - 0.62*cloud) + cloud*(0.21 + 0.40*lit + 0.14*t);
+    var cw = Math.min(1, cloud);
+    val = val*(1 - 0.90*cw) + cw*(0.66 + 0.30*lit + 0.08*t);
 
     var r = ridge(u);
     if (v > r) {
@@ -131,5 +134,81 @@
     return img;
   }
 
-  global.PixelIntro = { scene:scene, renderFrame:renderFrame, SUNSET:SUNSET, PHOSPHOR:PHOSPHOR };
+
+  /* ---------- 像素字幕 ----------
+     把文字畫進同一張低解析畫布，再二值化成 1-bit
+     → 跟場景共用同一個像素網格，放大後就是真的像素字，零字型下載 */
+  var _maskCache = {};
+  function titleMask(text, W){
+    var key = text + '|' + W;
+    if (_maskCache[key]) return _maskCache[key];
+    if (typeof document === 'undefined') return null;
+
+    var FONT = '700 SIZEpx ui-monospace, "PingFang TC", "Heiti TC", "Noto Sans CJK TC", monospace';
+    var maxW = W * 0.86;
+    var probe = document.createElement('canvas').getContext('2d');
+    var size = Math.max(9, Math.round(W * 0.17));
+    while (size > 9) {                                  // 量到塞得下為止，絕不換行
+      probe.font = FONT.replace('SIZE', size);
+      if (probe.measureText(text).width <= maxW) break;
+      size--;
+    }
+    probe.font = FONT.replace('SIZE', size);
+    var w = Math.min(W, Math.ceil(probe.measureText(text).width) + 2);
+    var h = Math.ceil(size * 1.34);
+
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var g = c.getContext('2d');
+    g.font = FONT.replace('SIZE', size);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#fff';
+    g.fillText(text, w/2, h/2);
+
+    var d = g.getImageData(0, 0, w, h).data;
+    var bits = new Uint8Array(w*h);
+    for (var i = 0, n = w*h; i < n; i++) bits[i] = d[i*4+3] > 118 ? 1 : 0;   // 二值化
+    var m = { w:w, h:h, bits:bits };
+    _maskCache[key] = m;
+    return m;
+  }
+
+  function drawTitle(img, W, H, text, tint){
+    if (!text) return;
+    var m = titleMask(text, W);
+    if (!m) return;
+    var pal = mixPal(SUNSET, PHOSPHOR, tint || 0);
+    var data = img.data;
+    var ox = Math.round((W - m.w)/2);
+    var oy = Math.round(H*0.52 - m.h/2);
+    var padY = 4, edge = W*0.12, dark = pal[0];
+
+    for (var y = oy - padY; y < oy + m.h + padY; y++){
+      if (y < 0 || y >= H) continue;
+      var dy = Math.min(y - (oy - padY), (oy + m.h + padY) - y);
+      var fy = dy < 3 ? dy/3 : 1;
+      for (var x = 0; x < W; x++){
+        var fx = x < edge ? x/edge : (x > W - edge ? (W - x)/edge : 1);
+        var a = 0.82 * fx * fy;
+        if (a <= 0) continue;
+        var i = (y*W + x)*4;
+        data[i]   = Math.round(data[i]  *(1-a) + dark[0]*a);
+        data[i+1] = Math.round(data[i+1]*(1-a) + dark[1]*a);
+        data[i+2] = Math.round(data[i+2]*(1-a) + dark[2]*a);
+      }
+    }
+    var lit = pal[3];
+    for (var ty = 0; ty < m.h; ty++){
+      var yy = oy + ty; if (yy < 0 || yy >= H) continue;
+      for (var tx = 0; tx < m.w; tx++){
+        if (!m.bits[ty*m.w + tx]) continue;
+        var xx = ox + tx; if (xx < 0 || xx >= W) continue;
+        var j = (yy*W + xx)*4;
+        data[j] = lit[0]; data[j+1] = lit[1]; data[j+2] = lit[2];
+      }
+    }
+  }
+
+  global.PixelIntro = { scene:scene, renderFrame:renderFrame, drawTitle:drawTitle,
+                        SUNSET:SUNSET, PHOSPHOR:PHOSPHOR };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
