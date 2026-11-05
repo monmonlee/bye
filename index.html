@@ -93,6 +93,8 @@
   #caret.off{opacity:.25; animation:none}
   @keyframes blink{50%{opacity:0}}
 
+  #out a{ color:#8ff7b8; text-decoration:underline; text-underline-offset:3px; text-decoration-style:dotted; }
+  #out a:active{ opacity:.6 }
   .hint{margin-top:18px; color:var(--dim); font-size:.92em; line-height:1.75}
   .hint kbd{
     border:1px solid var(--dim); border-radius:3px; padding:0 4px; font:inherit; font-size:.95em;
@@ -165,6 +167,7 @@
   function push(op){ queue.push(op); if(!running) run(); }
   function say(t, cls, sp){ push({k:'type', text:String(t), cls:cls||'', speed:sp||20}); }
   function reveal(t, cls, hold){ push({k:'line', text:String(t), cls:cls||'', hold:hold||420}); }
+  function link(t, href, cls){ push({k:'link', text:String(t), href:href, cls:cls||''}); }
   function print(t, cls){ push({k:'print', text:String(t), cls:cls||''}); }
   function wait(ms){ push({k:'wait', ms:ms}); }
   function then(fn){ push({k:'fn', fn:fn}); }
@@ -180,6 +183,14 @@
     out.appendChild(span);
     var isBlock = /\bcard\b/.test(op.cls);
     var tail = document.createTextNode(isBlock ? '' : '\n');
+    if(op.k === 'link'){
+      var a = document.createElement('a');
+      a.href = op.href; a.textContent = op.text;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      if(op.cls) a.className = op.cls;
+      out.appendChild(a); out.appendChild(document.createTextNode('\n'));
+      scroll(); return run();
+    }
     if(op.k === 'line'){
       span.textContent = op.text;
       if(!skipping && !reduce) span.classList.add('rise');
@@ -278,6 +289,8 @@
       ['  card       再看一次你的卡片',
        '  replay     再看一次開場動畫',
        '  ls         看看還有誰也有一張',
+       '  contact    離職後怎麼找到我',
+       '  uptime     我在這裡待了多久',
        '  whoami     ？',
        '  （還有一個沒寫在這，自己試）'].forEach(function(l){ print(l, 'dim'); });
       prompt();
@@ -303,6 +316,34 @@
       });
       print('');
       print('  ' + (((window.__card && window.__card.roster) || []).length) + ' 個人，一人一張。你只打得開自己那一張。', 'dim');
+      prompt();
+    },
+    uptime: function(){
+      // 到職 2026-01-05，最後一天 2026-11-06
+      var a = new Date(2026, 0, 5), b = new Date(2026, 10, 6);
+      var days = Math.round((b - a) / 86400000);
+      var months = (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth())
+                 - (b.getDate() < a.getDate() ? 1 : 0);
+      var rem = b.getDate() - a.getDate();
+      print('');
+      print('$ uptime', 'ps1');
+      print('  up ' + months + ' months, ' + rem + ' day  (' + days + ' days)', 'warn');
+      print('  since 2026-01-05, last login 2026-11-06', 'dim');
+      print('  projects: 誠品, 國泰, 糖蛙, 集保, 台達', 'dim');
+      print('  load average: 1.00, 1.00, 1.00', 'dim');
+      print('  0 regrets', 'dim');
+      prompt();
+    },
+    contact: function(){
+      print('');
+      print('$ contact amelie', 'ps1');
+      print('');
+      print('  離職之後還找得到我的地方：', 'warn');
+      print('');
+      print('  instagram', 'dim');
+      link('    @amelielee0616', 'https://www.instagram.com/amelielee0616/');
+      print('');
+      print('  （這台機器會一直開著，想再看卡片隨時回來。）', 'dim');
       prompt();
     },
     whoami: function(){
