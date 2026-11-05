@@ -68,9 +68,11 @@ await new Promise(r => setTimeout(r, 400));
 const cmdEl = els.cmd;
 const handlers = (cmdEl._on && cmdEl._on.keydown) || [];
 if (!handlers.length) { console.error('✗ 輸入框沒有 keydown 監聽器'); process.exit(1); }
-cmdEl.value = 'card';
-for (const h of handlers) h({ key:'Enter', preventDefault(){} });
-await new Promise(r => setTimeout(r, 600));
+for (const txt of ['card', 'ls']) {
+  cmdEl.value = txt;
+  for (const h of handlers) h({ key:'Enter', preventDefault(){} });
+  await new Promise(r => setTimeout(r, 400));
+}
 // 依 appendChild 順序重建畫面文字
 let lines = '';
 for (const n of els.out.children) lines += n.__isText ? n.__text : n._t;

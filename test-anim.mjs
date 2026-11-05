@@ -18,7 +18,8 @@ function mkEl(id){
     get textContent(){return this._t}, set textContent(v){this._t=v; this.children.length=0},
     appendChild(n){ this.children.push(n); return n; },
     querySelector(){ return mkEl('x'); },
-    addEventListener(){}, removeEventListener(){}, focus(){}, blur(){},
+    _on:{}, addEventListener(t,f){ (this._on[t]=this._on[t]||[]).push(f); },
+    removeEventListener(){}, focus(){}, blur(){},
     getContext(){ return {
       createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4), width:w, height:h}),
       putImageData(){}, measureText:(s)=>({width:s.length*10}),
@@ -84,6 +85,26 @@ for (let step = 0; step < 400 && !failed; step++){
   await new Promise(r => setTimeout(r, 0));
 }
 await new Promise(r => setTimeout(r, 120));
+
+// 跑一次 card → replay，確認重播不會因重複進入而爆
+async function type(txt){
+  const hs = (els.cmd._on && els.cmd._on.keydown) || [];
+  els.cmd.value = txt;
+  for (const h of hs) h({ key:'Enter', preventDefault(){} });
+  await new Promise(r => setTimeout(r, 60));
+}
+if (!failed && !process.env.FAIL_FETCH){
+  await type('card');
+  await type('replay');
+  for (let step = 0; step < 500 && !failed; step++){
+    clock += 20;
+    const fns = [...rafQ.entries()]; rafQ.clear();
+    for (const [, fn] of fns){ try { fn(clock); } catch(e){ failed = e; break; } }
+    await new Promise(r => setTimeout(r, 0));
+  }
+  await new Promise(r => setTimeout(r, 120));
+  console.log('  replay 重播    :', failed ? 'NO' : 'ok');
+}
 
 if (failed){ console.error('✗ 動畫執行期錯誤：', failed.message); process.exit(1); }
 console.log('✓ 動畫跑完無錯誤');

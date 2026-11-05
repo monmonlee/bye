@@ -24,6 +24,7 @@ const existing = existsSync(TOKENS_FILE)
   ? JSON.parse(readFileSync(TOKENS_FILE, 'utf8')) : [];
 const prev = new Map(existing.map(t => [t.key, t.token]));
 
+const roster = CARDS.map(c => c.name);      // 名冊隨加密內容一起走，不放公開 HTML
 const entries = {};
 const tokens = [];
 for (const card of CARDS) {
@@ -33,7 +34,7 @@ for (const card of CARDS) {
   const ct = new Uint8Array(await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     await keyFromToken(token),
-    enc.encode(JSON.stringify({ name: card.name, msg: card.msg }))
+    enc.encode(JSON.stringify({ name: card.name, msg: card.msg, roster: roster }))
   ));
   entries[await idFromToken(token)] = { iv: b64u(iv), ct: b64u(ct) };
   tokens.push({ key: card.key, name: card.name, token, url: BASE + '#' + token });
