@@ -12,6 +12,12 @@
 > `build.mjs` 會沿用 `tokens.json` 裡既有的 token，所以**改文字不會讓已經印出去的 QR 失效**。
 > 千萬不要刪掉 `tokens.json`，刪了就得重印。
 
+5. `./backup.sh` → 把 `tokens.json` 與 `cards.src.js` 同步到私有 repo
+   [monmonlee/bye-secrets](https://github.com/monmonlee/bye-secrets)
+
+**每次改完文案都要跑 `./backup.sh`。** 這兩個檔案不在公開 repo 裡（故意的），
+而公司電腦鎖住檔案傳輸，git/gh 是唯一能把它們帶出這台機器的通道。
+
 ## 改完先跑測試（30 秒）
 
 ```
