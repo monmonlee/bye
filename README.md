@@ -4,7 +4,11 @@
 
 ## 怎麼改內容
 
-1. 編輯 `cards.src.js`（**明文，不會上傳 GitHub**，已在 .gitignore）
+**文案寫在 Obsidian 的 `card.md`**（段落標題＝每個人的 key，有沒有 `###` 都可以）。
+寫完跑 `node import-cards.mjs` 看報告，確認沒問題再 `node import-cards.mjs --write` 匯入。
+
+0. 在 Obsidian 寫 → `node import-cards.mjs --write`
+1. （或直接編輯 `cards.src.js`）（**明文，不會上傳 GitHub**，已在 .gitignore）
 2. `node build.mjs`      → 產生加密的 `cards.enc.json` 與 `tokens.json`
 3. `node make-cards.mjs` → 產生 `qr/*.svg` 與 `print/cards-a4.html`
 4. `git add -A && git commit -m "update" && git push`
