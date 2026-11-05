@@ -155,7 +155,8 @@
     var gap = document.body.scrollHeight - (scrollY + innerHeight);
     userScrolled = gap > 120;
   }, { passive:true });
-  function scroll(){ if(!userScrolled) window.scrollTo(0, document.body.scrollHeight); }
+  var holdTop = false;              // 卡片剛展開時，停在開頭不要往下衝
+  function scroll(){ if(!userScrolled && !holdTop) window.scrollTo(0, document.body.scrollHeight); }
   function push(op){ queue.push(op); if(!running) run(); }
   function say(t, cls, sp){ push({k:'type', text:String(t), cls:cls||'', speed:sp||20}); }
   function reveal(t, cls, hold){ push({k:'line', text:String(t), cls:cls||'', hold:hold||420}); }
@@ -246,9 +247,20 @@
     opts = opts || {};
     var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
     print('');
+    var anchor = null;
+    then(function(){                              // 卡片起點的錨
+      anchor = document.createElement('span');
+      out.appendChild(anchor);
+    });
     print('$ cat farewell/' + file + '.txt', 'ps1');
     String(card.msg || '').split('\n').forEach(function(l){
       print(l, l === '' ? '' : 'card');        // 全文一次印出，不做動畫
+    });
+    then(function(){                               // 印完回到卡片開頭，從上往下讀
+      if(!anchor) return;
+      var y = anchor.getBoundingClientRect().top + (window.scrollY || 0) - 12;
+      holdTop = true;
+      window.scrollTo(0, Math.max(0, y));
     });
     then(function(){                               // 讀螢幕軟體一次讀完整段，不逐字念
       var sr = document.getElementById('sr');
@@ -387,6 +399,7 @@
     if(e.key !== 'Enter') return;
     e.preventDefault();
     if(running) return doSkip();
+    holdTop = false;
     var v = cmd.value;
     print('');
     print('amelie@cloudmile:~$ ' + v, 'ps1');

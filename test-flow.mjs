@@ -36,6 +36,7 @@ const document = {
   getElementById: id => els[id],
   createElement: () => { const s = { className:'', _t:'',
       get textContent(){return this._t;}, set textContent(v){this._t=v;},
+      getBoundingClientRect(){ return { top:0, left:0, width:0, height:0 }; },
       __render(){ return this._t; } };
     spans.push(s);
     // out._text 需在 span 內容變動後才正確 → 改用最後統一收集

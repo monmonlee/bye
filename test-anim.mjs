@@ -18,6 +18,7 @@ function mkEl(id){
     get textContent(){return this._t}, set textContent(v){this._t=v; this.children.length=0},
     appendChild(n){ this.children.push(n); return n; },
     querySelector(){ return mkEl('x'); },
+    getBoundingClientRect(){ return { top:0, left:0, width:0, height:0 }; },
     _on:{}, addEventListener(t,f){ (this._on[t]=this._on[t]||[]).push(f); },
     removeEventListener(){}, focus(){}, blur(){},
     getContext(){ return {
