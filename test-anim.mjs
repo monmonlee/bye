@@ -60,6 +60,7 @@ const ctx = {
 };
 ctx.window = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
+vm.runInContext(readFileSync(dir + 'sprites.js','utf8'), ctx);
 vm.runInContext(readFileSync(dir + 'pixel-intro.js','utf8'), ctx);
 
 // 記錄字幕時序，確認每句出現的時間點跟動畫階段對得上

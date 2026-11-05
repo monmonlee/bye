@@ -93,6 +93,11 @@
   #caret.off{opacity:.25; animation:none}
   @keyframes blink{50%{opacity:0}}
 
+  .sprites{
+    display:block; margin:18px 0 4px;
+    width:auto; max-width:72%; height:auto;
+    image-rendering:pixelated; opacity:.9;
+  }
   #out a{ color:#8ff7b8; text-decoration:underline; text-underline-offset:3px; text-decoration-style:dotted; }
   #out a:active{ opacity:.6 }
   .hint{margin-top:18px; color:var(--dim); font-size:.92em; line-height:1.75}
@@ -137,6 +142,7 @@
 <canvas id="px" aria-hidden="true"></canvas>
 <div id="pxhint">TAP TO SKIP</div>
 
+<script src="sprites.js"></script>
 <script src="pixel-intro.js"></script>
 <script>
 (function(){
@@ -275,7 +281,31 @@
       print('');
       print('（這張卡只有你打得開。）', 'dim');
     }
+    then(function(){ addSprites(card); });
     prompt();
+  }
+
+  // 每封信結尾長出幾隻小動物。專屬的那隻固定出現，其餘從場景組隨機抽
+  var OWN = { Clara:'熊貓', Iris:'守宮', Amber:'烏龜', Amelia:'兔子', Jimmy:'王冠' };
+  function addSprites(card){
+    if(!window.SPRITES || !window.drawSpriteRow) return;
+    var name = card && card.name || '';
+    var rnd = spriteSeed(name || 'amelie');
+    var pool = Object.keys(SPRITES.scene).filter(function(k){ return k !== '鳥_飛'; });
+    var pick = [];
+    if(OWN[name]) pick.push(OWN[name]);
+    if(name === 'Amber') pick.push('小烏龜', '小烏龜');          // 彭彭、丁滿、妹妹
+    while(pick.length < 3){
+      var c = pool[Math.floor(rnd() * pool.length)];
+      if(pick.indexOf(c) < 0) pick.push(c);
+    }
+    var cv = document.createElement('canvas');
+    cv.className = 'sprites';
+    cv.setAttribute('aria-hidden','true');
+    drawSpriteRow(cv, pick);
+    out.appendChild(cv);
+    out.appendChild(document.createTextNode('\n'));
+    scroll();
   }
 
   /* ================= 指令彩蛋 ================= */
@@ -476,7 +506,7 @@
       }
       function frame(now){
         var e = now - start;
-        var p = { t:0, reveal:0, dissolve:0, tint:0, collapse:0, anim:e };
+        var p = { t:0, reveal:0, dissolve:0, tint:0, collapse:0, anim:e, climb:0 };
         if(e < T_WIPE){
           var w = e / T_WIPE;
           p.reveal = w * w * (3 - 2 * w);           // smoothstep，像掃描線拉下來
@@ -484,15 +514,17 @@
         } else if(e < T_WIPE + T_SUN){
           var s = (e - T_WIPE) / T_SUN;
           p.reveal = 1; p.t = 0.18 + 0.82 * s;
+          p.climb = 0.45 * s;
           if (s > 0.42) beat(0, e);                 // 雲裂開的瞬間 →「撥雲見日..」
         } else if(e < T_WIPE + T_SUN + T_TITLE){
-          // 畫面定格在豔陽，字幕一句一句打出來
+          // 畫面定格在豔陽，字幕一句一句打出來；小人繼續往峰頂爬
           p.reveal = 1; p.t = 1;
+          p.climb = 0.45 + 0.55 * ((e - T_WIPE - T_SUN) / T_TITLE);
           beat(Math.min(TITLES.length - 1,
                         1 + Math.floor((e - T_WIPE - T_SUN) / (T_TITLE / 3))), e);
         } else {
           var b2 = Math.min(1, (e - T_WIPE - T_SUN - T_TITLE) / T_BREAK);
-          p.reveal = 1; p.t = 1;
+          p.reveal = 1; p.t = 1; p.climb = 1;
           p.dissolve = Math.min(1, b2 * 1.6);
           p.tint = Math.min(1, b2 * 1.25);
           p.collapse = Math.max(0, (b2 - 0.38) / 0.62);   // CRT 關機收合

@@ -117,25 +117,40 @@
   // DITHER < 1 → 只有「夾在兩階之間」的像素才抖動，
   // 接近某一階的大片區域直接吃實色（真正的像素畫是這樣，不是整張都是網點）
   var DITHER = 0.70;
-  /* 站在近山稜線上的小人剪影（3x6），給畫面一個尺度 */
-  var FIGURE = [
+  /* 小人剪影（3x6 兩幀走路）：從右下谷底一路爬到左上峰頂 */
+  var FIGURES = [[
     0,1,0,
     1,1,1,
     0,1,0,
     0,1,0,
     1,0,1,
     1,0,1
-  ];
+  ],[
+    0,1,0,
+    1,1,1,
+    0,1,0,
+    0,1,0,
+    0,1,1,
+    1,1,0
+  ]];
   var FIG_W = 3, FIG_H = 6;
-  function drawFigure(data, W, H, pal, anim){
-    var u = 0.70 + 0.012*Math.sin(anim*0.5);        // 極緩慢地晃一下，像在呼吸
-    var fx = Math.round(u*W) - (FIG_W >> 1);
-    var fy = Math.round(ridge(u)*H) - FIG_H;
+  var U_START = 0.90, U_END = 0.06;          // 谷底 → 峰頂
+
+  function drawFigure(data, W, H, pal, anim, climb){
+    var k = Math.max(0, Math.min(1, climb || 0));
+    var e = k * k * (3 - 2 * k);                       // 起步與到頂都放慢
+    var u = U_START + (U_END - U_START) * e;
+    // 走路：每前進一小段換一次腳；爬坡時上下輕微起伏
+    var fig = FIGURES[Math.floor(k * 46) % 2];
+    var bob = (Math.floor(k * 46) % 2) ? 0 : -1;
+
+    var fx = Math.round(u * W) - (FIG_W >> 1);
+    var fy = Math.round(ridge(u) * H) - FIG_H + bob;
     var c = pal[0];
     for (var y = 0; y < FIG_H; y++){
       var yy = fy + y; if (yy < 0 || yy >= H) continue;
       for (var x = 0; x < FIG_W; x++){
-        if (!FIGURE[y*FIG_W + x]) continue;
+        if (!fig[y*FIG_W + x]) continue;
         var xx = fx + x; if (xx < 0 || xx >= W) continue;
         var i = (yy*W + xx)*4;
         data[i] = c[0]; data[i+1] = c[1]; data[i+2] = c[2];
@@ -190,7 +205,7 @@
         data[i]=c[0]; data[i+1]=c[1]; data[i+2]=c[2]; data[i+3]=255;
       }
     }
-    if (p.reveal >= 1 && !collapse) drawFigure(data, W, H, pal, anim);
+    if (p.reveal >= 1 && !collapse) drawFigure(data, W, H, pal, anim, p.climb);
     return img;
   }
 
