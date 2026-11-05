@@ -31,15 +31,15 @@ const sheet = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
   @page { size: A4; margin: 10mm; }
   *{box-sizing:border-box}
   body{margin:0;font-family:"PingFang TC",-apple-system,sans-serif;background:#fff;color:#111}
-  .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:48.5mm;gap:0}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:68mm;gap:0}
   .cell{
-    border:1px dashed #bbb; padding:4mm 2mm;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.5mm;
+    border:1px dashed #bbb; padding:5mm 2mm;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.5mm;
     break-inside:avoid;
   }
-  .name{font-size:11pt;font-weight:600;letter-spacing:.5px}
-  .qr{width:26mm;height:26mm;display:block}
-  .foot{font-size:6.5pt;color:#888;letter-spacing:.2px}
+  .name{font-size:15pt;font-weight:600;letter-spacing:1px}
+  .qr{width:40mm;height:40mm;display:block}
+  .foot{font-size:8pt;color:#777;letter-spacing:.3px}
   .tip{font-size:8pt;color:#999;margin:0 0 3mm}
   @media print{ .tip{display:none} }
 </style></head><body>
