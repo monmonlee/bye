@@ -222,10 +222,13 @@
     wait(500);
     then(function(){                               // 讀螢幕軟體一次讀完整段，不逐字念
       var sr = document.getElementById('sr');
-      if(sr) sr.textContent = String(card.msg || '') + '。— amelie';
+      if(sr) sr.textContent = String(card.msg || '');
     });
-    print('');
-    print('— amelie', 'dim');
+    // 文案自己有署名（by ...）就不要再加一行「— amelie」
+    if(!/(^|\n)\s*by\s+\S/i.test(String(card.msg || ''))){
+      print('');
+      print('— amelie', 'dim');
+    }
     if(!opts.quiet){
       print('');
       say('（這張卡只有你打得開。）', 'dim', 16);

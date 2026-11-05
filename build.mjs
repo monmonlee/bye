@@ -59,6 +59,12 @@ if (existing.length && added.length) {
 }
 
 
+const unfinished = CARDS.filter(c => /^（寫給 .+ 的話）$/.test(String(c.msg).trim()));
+if (unfinished.length) {
+  console.warn(`! 還有 ${unfinished.length} 位是佔位文案：${unfinished.map(c => c.name).join('、')}`);
+  console.warn('  他們現在掃到的會是「（寫給 XX 的話）」，發卡前要補完。');
+}
+
 writeFileSync('./cards.enc.json', JSON.stringify({ v: 1, entries }, null, 0));
 writeFileSync('./fallback.json', JSON.stringify(FALLBACK, null, 2));
 writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
