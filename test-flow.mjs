@@ -6,7 +6,8 @@ const dir = './';
 const html = readFileSync(dir + 'index.html', 'utf8');
 const script = html.match(/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g).pop()
                    .replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
-const token = JSON.parse(readFileSync(dir + 'tokens.json','utf8'))[0].token;
+const _toks = JSON.parse(readFileSync(dir + 'tokens.json','utf8'));
+const token = (process.env.KEY ? _toks.find(t=>t.key===process.env.KEY) : _toks[0]).token;
 
 // --- 最小 DOM stub ---
 function mkEl(id){
@@ -18,7 +19,8 @@ function mkEl(id){
     get textContent(){ return this._text; },
     set textContent(v){ this._text = v; this.children.length = 0; },
     appendChild(n){ this.children.push(n); if(n.__text!==undefined) this._text += n.__text; return n; },
-    addEventListener(){}, focus(){}, blur(){},
+    _on:{}, addEventListener(t,f){ (this._on[t]=this._on[t]||[]).push(f); },
+    removeEventListener(){}, focus(){}, blur(){},
   };
   return el;
 }
@@ -54,11 +56,21 @@ const ctx = {
       json: async () => JSON.parse(readFileSync(dir + p, 'utf8')) }),
 };
 ctx.scrollTo = ()=>{};
+ctx.addEventListener = ()=>{}; ctx.removeEventListener = ()=>{};
+ctx.scrollY = 0; ctx.innerHeight = 844; ctx.innerWidth = 390;
 ctx.window = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(script, ctx);
 
 await new Promise(r => setTimeout(r, 400));
+
+// 模擬使用者輸入 card + Enter
+const cmdEl = els.cmd;
+const handlers = (cmdEl._on && cmdEl._on.keydown) || [];
+if (!handlers.length) { console.error('✗ 輸入框沒有 keydown 監聽器'); process.exit(1); }
+cmdEl.value = 'card';
+for (const h of handlers) h({ key:'Enter', preventDefault(){} });
+await new Promise(r => setTimeout(r, 600));
 // 依 appendChild 順序重建畫面文字
 let lines = '';
 for (const n of els.out.children) lines += n.__isText ? n.__text : n._t;

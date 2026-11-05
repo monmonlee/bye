@@ -35,7 +35,7 @@
   }
   #screen{
     position:relative; z-index:1; min-height:100%;
-    padding:max(14px,env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+    padding:max(14px,env(safe-area-inset-top)) 14px calc(32vh + env(safe-area-inset-bottom));
     max-width:760px; margin:0 auto;
     animation:flicker 7s infinite steps(1);
   }
@@ -53,6 +53,9 @@
     font-size:1.5em; letter-spacing:.06em; line-height:1.5;
     display:inline-block; padding:6px 0 8px;
   }
+  .rise{ animation:rise .5s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes rise{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+  @media (prefers-reduced-motion:reduce){ .rise{animation:none} }
   .card{
     display:block;                      /* 關鍵：折行後才會保留縮排與左線 */
     border-left:2px solid var(--dim); padding:0 0 0 14px;
@@ -136,7 +139,7 @@
   </div>
 </div>
 <canvas id="px" aria-hidden="true"></canvas>
-<button id="skip" type="button">跳過動畫 ▸▸</button>
+<button id="skip" type="button">直接看完 ▸▸</button>
 
 <script src="pixel-intro.js"></script>
 <script>
@@ -151,9 +154,16 @@
 
   /* ================= 輸出引擎 ================= */
   var queue = [], running = false, skipping = false;
-  function scroll(){ window.scrollTo(0, document.body.scrollHeight); }
+  var userScrolled = false;
+  addEventListener('scroll', function(){
+    // 離底部超過 120px＝使用者想自己讀，暫停自動捲動
+    var gap = document.body.scrollHeight - (scrollY + innerHeight);
+    userScrolled = gap > 120;
+  }, { passive:true });
+  function scroll(){ if(!userScrolled) window.scrollTo(0, document.body.scrollHeight); }
   function push(op){ queue.push(op); if(!running) run(); }
   function say(t, cls, sp){ push({k:'type', text:String(t), cls:cls||'', speed:sp||20}); }
+  function reveal(t, cls, hold){ push({k:'line', text:String(t), cls:cls||'', hold:hold||420}); }
   function print(t, cls){ push({k:'print', text:String(t), cls:cls||''}); }
   function wait(ms){ push({k:'wait', ms:ms}); }
   function then(fn){ push({k:'fn', fn:fn}); }
@@ -169,6 +179,12 @@
     out.appendChild(span);
     var isBlock = /\bcard\b/.test(op.cls);
     var tail = document.createTextNode(isBlock ? '' : '\n');
+    if(op.k === 'line'){
+      span.textContent = op.text;
+      if(!skipping && !reduce) span.classList.add('rise');
+      out.appendChild(tail); scroll();
+      return (skipping || reduce) ? run() : void setTimeout(run, op.hold);
+    }
     if(op.k === 'print' || skipping || reduce){
       span.textContent = op.text; out.appendChild(tail); scroll(); return run();
     }
