@@ -75,8 +75,8 @@ process.on('uncaughtException', e => { failed = e; });
 try { vm.runInContext(script, ctx); } catch(e){ failed = e; }
 
 // 推進假時鐘，把整段動畫跑完
-for (let step = 0; step < 400 && !failed; step++){
-  clock += 20;
+for (let step = 0; step < 220 && !failed; step++){
+  clock += 50;   // 取樣變疏，仍走完整條時間軸（原本每 20ms 一幀太慢）
   const fns = [...rafQ.entries()];
   rafQ.clear();
   for (const [, fn] of fns){
@@ -96,8 +96,8 @@ async function type(txt){
 if (!failed && !process.env.FAIL_FETCH){
   await type('card');
   await type('replay');
-  for (let step = 0; step < 500 && !failed; step++){
-    clock += 20;
+  for (let step = 0; step < 220 && !failed; step++){
+    clock += 50;
     const fns = [...rafQ.entries()]; rafQ.clear();
     for (const [, fn] of fns){ try { fn(clock); } catch(e){ failed = e; break; } }
     await new Promise(r => setTimeout(r, 0));

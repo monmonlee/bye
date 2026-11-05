@@ -112,12 +112,6 @@
     text-shadow:none; display:none;
   }
   #pxhint.on{display:block}
-  #skip{
-    position:fixed; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:12;
-    background:rgba(7,16,11,.9); border:1px solid var(--dim); color:var(--dim);
-    font:inherit; font-size:12px; padding:8px 12px; border-radius:4px; display:none;
-  }
-  #skip.show{display:block}
 </style>
 </head>
 <body>
@@ -142,7 +136,6 @@
 </div>
 <canvas id="px" aria-hidden="true"></canvas>
 <div id="pxhint">TAP TO SKIP</div>
-<button id="skip" type="button">直接看完 ▸▸</button>
 
 <script src="pixel-intro.js"></script>
 <script>
@@ -152,7 +145,6 @@
   var line = document.getElementById('inputline');
   var cmd = document.getElementById('cmd');
   var hint = document.getElementById('hint');
-  var skipBtn = document.getElementById('skip');
   var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
 
   /* ================= 輸出引擎 ================= */
@@ -175,7 +167,7 @@
   function run(){
     running = true;
     var op = queue.shift();
-    if(!op){ running = false; skipping = false; skipBtn.classList.remove('show'); return; }
+    if(!op){ running = false; skipping = false; return; }
     if(op.k === 'fn'){ op.fn(); return run(); }
     if(op.k === 'wait'){ return (skipping || reduce) ? run() : void setTimeout(run, op.ms); }
     var span = document.createElement('span');
@@ -200,7 +192,6 @@
     if(op.k === 'print' || skipping || reduce){
       span.textContent = op.text; out.appendChild(tail); scroll(); return run();
     }
-    skipBtn.classList.add('show');
     var i = 0, chars = Array.from(op.text);
     (function tick(){
       if(skipping){ span.textContent = op.text; out.appendChild(tail); scroll(); return run(); }
@@ -212,7 +203,6 @@
     })();
   }
   function doSkip(){ if(running) skipping = true; }
-  skipBtn.addEventListener('click', doSkip);
 
   /* ================= 解密 ================= */
   var te = new TextEncoder(), td = new TextDecoder();
@@ -256,13 +246,10 @@
     opts = opts || {};
     var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
     print('');
-    reveal('$ cat farewell/' + file + '.txt', 'ps1', 340);
+    print('$ cat farewell/' + file + '.txt', 'ps1');
     String(card.msg || '').split('\n').forEach(function(l){
-      // 一段一段浮現，停留時間隨段落長度
-      if(l === '') print('');
-      else reveal(l, 'card', Math.min(900, 280 + l.length * 3));
+      print(l, l === '' ? '' : 'card');        // 全文一次印出，不做動畫
     });
-    wait(400);
     then(function(){                               // 讀螢幕軟體一次讀完整段，不逐字念
       var sr = document.getElementById('sr');
       if(sr) sr.textContent = String(card.msg || '');
@@ -274,7 +261,7 @@
     }
     if(!opts.quiet){
       print('');
-      reveal('（這張卡只有你打得開。）', 'dim', 200);
+      print('（這張卡只有你打得開。）', 'dim');
     }
     prompt();
   }
@@ -336,8 +323,8 @@
       print('  last login 2026-11-06', 'dim');
       print('  projects   誠品 國泰 糖蛙', 'dim');
       print('             集保 台達', 'dim');
-      print('  load avg   1.00 1.00 1.00', 'dim');
       print('  regrets    0', 'dim');
+      print('  status     涅槃重生', 'warn');
       prompt();
     },
     contact: function(){
@@ -409,7 +396,6 @@
   // 點畫面＝跳過動畫；但「聚焦輸入框」只在點輸入列本身時才做
   // （手機上隨便點就彈鍵盤會蓋住剛讀到的卡片）
   document.addEventListener('click', function(e){
-    if(e.target === skipBtn) return;
     if(running) doSkip();
   });
   line.addEventListener('click', function(){ cmd.focus(); });
