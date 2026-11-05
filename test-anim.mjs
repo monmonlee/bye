@@ -57,6 +57,15 @@ ctx.window = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(readFileSync(dir + 'pixel-intro.js','utf8'), ctx);
 
+// 記錄字幕時序，確認每句出現的時間點跟動畫階段對得上
+const beats = [];
+const _drawTitle = ctx.PixelIntro.drawTitle;
+ctx.PixelIntro.drawTitle = function(img, W, H, text, tint){
+  if (!beats.length || beats[beats.length-1].text !== text) beats.push({ text, from: clock });
+  beats[beats.length-1].to = clock;
+  return _drawTitle.apply(this, arguments);
+};
+
 let failed = null;
 process.on('uncaughtException', e => { failed = e; });
 try { vm.runInContext(script, ctx); } catch(e){ failed = e; }
@@ -81,6 +90,8 @@ let text = '';
 for (const n of els.out.children) text += (n.__isText ? n.__text : (n._t || ''));
 const reached = text.includes('嗨嗨') && text.includes('Jimmy');
 console.log('  有接上終端機  :', reached ? 'yes' : 'NO');
+console.log('--- 字幕時序 ---');
+for (const b of beats) console.log(`  ${String(b.from).padStart(5)}–${String(b.to).padStart(5)}ms  ${b.text}`);
 console.log('--- 終端機輸出 ---');
 console.log(text.trim());
 if (!reached) process.exit(1);

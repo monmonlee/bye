@@ -337,11 +337,11 @@
     setTimeout(function(){ pxhint.classList.add('on'); }, 900);
 
     // 時間軸（毫秒）：掃描線拉開 → 撥雲見日 → 滿版字幕 → 碎解
-    var T_WIPE = 800, T_SUN = 1500, T_TITLE = 2700, T_BREAK = 800, T_FADE = 320;
+    var T_WIPE = 800, T_SUN = 1600, T_TITLE = 1900, T_BREAK = 800, T_FADE = 320;
     var TOTAL = T_WIPE + T_SUN + T_TITLE + T_BREAK;
 
     // 滿版像素字幕：直接畫進低解析畫布，與場景共用像素網格
-    var TITLES = ['豔陽高照', '撥雲見日..', '萬里無雲'];
+    var TITLES = ['撥雲見日..', '豔陽高照', '萬里無雲'];
     var curTitle = '', beatAt = 0;
     function beat(i, now){
       var next = (i < 0 || i >= TITLES.length) ? '' : TITLES[i];
@@ -373,11 +373,12 @@
         } else if(e < T_WIPE + T_SUN){
           var s = (e - T_WIPE) / T_SUN;
           p.reveal = 1; p.t = 0.18 + 0.82 * s;
+          if (s > 0.42) beat(0, e);                 // 雲裂開的瞬間 →「撥雲見日..」
         } else if(e < T_WIPE + T_SUN + T_TITLE){
           // 畫面定格在豔陽，字幕一句一句打出來
           p.reveal = 1; p.t = 1;
           beat(Math.min(TITLES.length - 1,
-                        Math.floor((e - T_WIPE - T_SUN) / (T_TITLE / TITLES.length))), e);
+                        1 + Math.floor((e - T_WIPE - T_SUN) / (T_TITLE / 2))), e);
         } else {
           var b2 = Math.min(1, (e - T_WIPE - T_SUN - T_TITLE) / T_BREAK);
           p.reveal = 1; p.t = 1; p.dissolve = b2; p.tint = Math.min(1, b2 * 1.25);
