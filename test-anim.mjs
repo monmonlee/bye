@@ -19,6 +19,7 @@ function mkEl(id){
     appendChild(n){ this.children.push(n); return n; },
     querySelector(){ return mkEl('x'); },
     getBoundingClientRect(){ return { top:0, left:0, width:0, height:0 }; },
+    setAttribute(){}, removeAttribute(){},
     _on:{}, addEventListener(t,f){ (this._on[t]=this._on[t]||[]).push(f); },
     removeEventListener(){}, focus(){}, blur(){},
     getContext(){ return {
@@ -73,7 +74,17 @@ ctx.PixelIntro.drawTitle = function(img, W, H, text, tint){
 };
 
 let failed = null;
-process.on('uncaughtException', e => { failed = e; });
+process.on('uncaughtException', e => {
+  // 不能只記下來——計時器裡爆掉會讓 event loop 空掉、process 靜默 exit 0，
+  // 結果真的壞了也會被當成通過。直接印出並以 1 結束。
+  console.error('✗ 執行期例外：' + (e && e.message));
+  console.error((e && e.stack || '').split('\n').slice(0, 5).join('\n'));
+  process.exit(1);
+});
+process.on('unhandledRejection', r => {
+  console.error('✗ 未處理的 rejection：' + (r && r.message || r));
+  process.exit(1);
+});
 try { vm.runInContext(script, ctx); } catch(e){ failed = e; }
 
 // 推進假時鐘，把整段動畫跑完
