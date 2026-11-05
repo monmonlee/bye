@@ -12,6 +12,16 @@
 > `build.mjs` 會沿用 `tokens.json` 裡既有的 token，所以**改文字不會讓已經印出去的 QR 失效**。
 > 千萬不要刪掉 `tokens.json`，刪了就得重印。
 
+## 改完先跑測試（30 秒）
+
+```
+node test-flow.mjs    # 解密 + 終端機輸出順序
+node test-anim.mjs    # 整段動畫跑一遍，抓執行期錯誤、確認有接上終端機
+```
+
+兩個都要印出內容才算過。曾經有一次改動把動畫的時間軸常數刪掉，
+畫面會卡在 banner 不動 —— `test-anim.mjs` 就是為了擋這種錯。
+
 ## 列印
 
 開 `print/cards-a4.html` → Cmd+P → A4、縮放 100%、關掉「符合頁面大小」。

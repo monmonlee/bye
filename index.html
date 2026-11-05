@@ -333,6 +333,13 @@
     cv.width = W; cv.height = H;
     var img = ctx2d.createImageData(W, H);
 
+    cv.classList.add('on');
+    setTimeout(function(){ pxhint.classList.add('on'); }, 900);
+
+    // 時間軸（毫秒）：掃描線拉開 → 撥雲見日 → 滿版字幕 → 碎解
+    var T_WIPE = 800, T_SUN = 1500, T_TITLE = 2700, T_BREAK = 800, T_FADE = 320;
+    var TOTAL = T_WIPE + T_SUN + T_TITLE + T_BREAK;
+
     // 滿版像素字幕：直接畫進低解析畫布，與場景共用像素網格
     var TITLES = ['豔陽高照', '撥雲見日..', '萬里無雲'];
     var curTitle = '', beatAt = 0;
