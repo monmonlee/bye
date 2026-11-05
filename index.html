@@ -104,7 +104,8 @@
 │  A M E L I E . L E E                 │
 │  last login: 2026-11-06  (final)     │
 └──────────────────────────────────────┘</pre>
-  <pre id="out" aria-live="polite"></pre>
+  <pre id="out" aria-live="off"></pre>
+  <div id="sr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></div>
 
   <div id="inputline" class="hide">
     <span id="ps"><b>amelie@cloudmile</b><span class="dim">:~$</span></span>
@@ -184,16 +185,21 @@
   }
   async function sha256(str){ return crypto.subtle.digest('SHA-256', te.encode(str)); }
 
-  async function unlock(token){
+  // 載入與解密分開：載不到是「連線問題」，解不開才是「不在名單」
+  async function loadPayload(){
     var res = await fetch('cards.enc.json', {cache:'no-store'});
-    if(!res.ok) throw new Error('payload ' + res.status);
-    var data = await res.json();
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+  async function unlock(data, token){
     var id = hex(await sha256('id:' + token)).slice(0, 16);
     var e = data.entries[id];
     if(!e) return null;
-    var key = await crypto.subtle.importKey('raw', await sha256('key:' + token), 'AES-GCM', false, ['decrypt']);
-    var pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64uToBytes(e.iv)}, key, b64uToBytes(e.ct));
-    return JSON.parse(td.decode(pt));
+    try {
+      var key = await crypto.subtle.importKey('raw', await sha256('key:' + token), 'AES-GCM', false, ['decrypt']);
+      var pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64uToBytes(e.iv)}, key, b64uToBytes(e.ct));
+      return JSON.parse(td.decode(pt));
+    } catch(_) { return null; }        // 金鑰不對 ＝ 不在名單，不是連線問題
   }
   async function getFallback(){
     try { return await (await fetch('fallback.json', {cache:'no-store'})).json(); }
@@ -203,6 +209,9 @@
   /* ================= 卡片 ================= */
   function showCard(card, opts){
     opts = opts || {};
+    // 長文案不要讓人等太久：超過 120 字開始加速，最快到原本的 1/3
+    var len = String(card.msg || '').length;
+    var sp = len <= 120 ? 27 : Math.max(9, Math.round(27 * 120 / len));
     var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
     print('');
     say('$ cat farewell/' + file + '.txt', 'ps1', 22);
@@ -211,6 +220,10 @@
       if(l === '') print(''); else say(l, 'card', 27);
     });
     wait(500);
+    then(function(){                               // 讀螢幕軟體一次讀完整段，不逐字念
+      var sr = document.getElementById('sr');
+      if(sr) sr.textContent = String(card.msg || '') + '。— amelie';
+    });
     print('');
     print('— amelie', 'dim');
     if(!opts.quiet){
@@ -310,11 +323,14 @@
     line.classList.add('hide'); hint.hidden = true; cmd.blur();
     handle(v);
   });
+  // 點畫面＝跳過動畫；但「聚焦輸入框」只在點輸入列本身時才做
+  // （手機上隨便點就彈鍵盤會蓋住剛讀到的卡片）
   document.addEventListener('click', function(e){
     if(e.target === skipBtn) return;
-    if(running) return doSkip();
-    if(!line.classList.contains('hide')) cmd.focus();
+    if(running) doSkip();
   });
+  line.addEventListener('click', function(){ cmd.focus(); });
+  hint.addEventListener('click', function(){ cmd.focus(); });
 
 
   /* ================= 像素過場 ================= */
@@ -332,6 +348,14 @@
     var H = Math.max(120, Math.min(300, Math.round(W * (innerHeight / innerWidth))));
     cv.width = W; cv.height = H;
     var img = ctx2d.createImageData(W, H);
+    // 轉向或視窗改變時重算畫布，否則像素會被拉歪
+    function resize(){
+      var nh = Math.max(120, Math.min(300, Math.round(W * (innerHeight / innerWidth))));
+      if(nh === H) return;
+      H = nh; cv.width = W; cv.height = H;
+      img = ctx2d.createImageData(W, H);
+    }
+    addEventListener('resize', resize);
 
     cv.classList.add('on');
     setTimeout(function(){ pxhint.classList.add('on'); }, 900);
@@ -356,6 +380,7 @@
         if(done) return; done = true;
         cancelAnimationFrame(raf);
         document.removeEventListener('pointerdown', onTap, true);
+        removeEventListener('resize', resize);
         pxhint.classList.remove('on');
         cv.style.opacity = '0';
         setTimeout(function(){ cv.classList.remove('on'); resolve(); }, T_FADE);
@@ -416,20 +441,40 @@
 
   (async function start(){
     // 過場動畫與抓取解密同時進行 —— 動畫剛好蓋住真實等待時間
-    var pending = token ? unlock(token).catch(function(e){ console.error(e); return null; })
-                        : Promise.resolve(null);
+    var pending = (async function(){
+      if(!token) return { kind:'nokey' };
+      try {
+        var data = await loadPayload();
+        var card = await unlock(data, token);
+        return card ? { kind:'ok', card:card } : { kind:'nokey' };
+      } catch(err){
+        console.error(err);
+        return { kind:'offline' };            // 載不到 ≠ 不在名單
+      }
+    })();
+
     var results = await Promise.all([playIntro(), pending]);
-    var card = results[1];
-    if(!card){
-      var fb = await getFallback();
+    var r = results[1];
+
+    if(r.kind === 'ok'){
+      window.__card = r.card;
+      return boot(r.card);
+    }
+    if(r.kind === 'offline'){
       say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
-      print('Authenticating with card key… failed', 'err'); wait(400);
+      print('Authenticating with card key… connection failed', 'err'); wait(420);
       print('');
-      then(function(){ showCard(fb, {quiet:true}); });
+      say('連不上伺服器，拿不到你的卡片。', 'warn', 30); wait(300);
+      say('不是你的連結有問題 —— 換個網路或重新整理再試一次。', 'warn', 30);
+      print('');
+      print('（如果一直都這樣，直接來跟我說。）', 'dim');
       return;
     }
-    window.__card = card;
-    boot(card);
+    var fb = await getFallback();
+    say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
+    print('Authenticating with card key… failed', 'err'); wait(400);
+    print('');
+    then(function(){ showCard(fb, {quiet:true}); });
   })();
 })();
 

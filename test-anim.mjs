@@ -50,8 +50,11 @@ const ctx = {
               createTextNode: t => ({__isText:true,__text:t}), addEventListener(){}, removeEventListener(){},
               body:{scrollHeight:0} },
   scrollTo(){},
-  fetch: async (p) => ({ ok:true, status:200,
-      json: async () => JSON.parse(readFileSync(dir + p, 'utf8')) }),
+  addEventListener(){}, removeEventListener(){},
+  fetch: async (p) => {
+    if (process.env.FAIL_FETCH && p.indexOf('cards.enc') === 0) throw new Error('network down');
+    return { ok:true, status:200, json: async () => JSON.parse(readFileSync(dir + p, 'utf8')) };
+  },
 };
 ctx.window = ctx; ctx.globalThis = ctx;
 vm.createContext(ctx);
@@ -88,8 +91,10 @@ console.log('  canvas 有啟用 :', els.px.classList.contains('on') || els.px.wi
 console.log('  畫布尺寸      :', els.px.width + 'x' + els.px.height);
 let text = '';
 for (const n of els.out.children) text += (n.__isText ? n.__text : (n._t || ''));
-const reached = text.includes('嗨嗨') && text.includes('Jimmy');
-console.log('  有接上終端機  :', reached ? 'yes' : 'NO');
+const reached = process.env.FAIL_FETCH
+  ? (text.includes('連不上伺服器') && !text.includes('沒有對應到任何人'))
+  : (text.includes('嗨嗨') && text.includes('Jimmy'));
+console.log(process.env.FAIL_FETCH ? '  斷線訊息正確  :' : '  有接上終端機  :', reached ? 'yes' : 'NO');
 console.log('--- 字幕時序 ---');
 for (const b of beats) console.log(`  ${String(b.from).padStart(5)}–${String(b.to).padStart(5)}ms  ${b.text}`);
 console.log('--- 終端機輸出 ---');
