@@ -68,7 +68,7 @@ await new Promise(r => setTimeout(r, 400));
 const cmdEl = els.cmd;
 const handlers = (cmdEl._on && cmdEl._on.keydown) || [];
 if (!handlers.length) { console.error('✗ 輸入框沒有 keydown 監聽器'); process.exit(1); }
-for (const txt of ['card', 'uptime', 'help']) {
+for (const txt of ['card', 'ls', 'uptime', 'whoami']) {
   cmdEl.value = txt;
   for (const h of handlers) h({ key:'Enter', preventDefault(){} });
   await new Promise(r => setTimeout(r, 400));

@@ -254,17 +254,15 @@
   /* ================= 卡片 ================= */
   function showCard(card, opts){
     opts = opts || {};
-    // 長文案不要讓人等太久：超過 120 字開始加速，最快到原本的 1/3
-    var len = String(card.msg || '').length;
-    var sp = len <= 120 ? 27 : Math.max(9, Math.round(27 * 120 / len));
     var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
     print('');
-    say('$ cat farewell/' + file + '.txt', 'ps1', 18);
-    wait(380);
+    reveal('$ cat farewell/' + file + '.txt', 'ps1', 340);
     String(card.msg || '').split('\n').forEach(function(l){
-      if(l === '') print(''); else say(l, 'card', 27);
+      // 一段一段浮現，停留時間隨段落長度
+      if(l === '') print('');
+      else reveal(l, 'card', Math.min(900, 280 + l.length * 3));
     });
-    wait(500);
+    wait(400);
     then(function(){                               // 讀螢幕軟體一次讀完整段，不逐字念
       var sr = document.getElementById('sr');
       if(sr) sr.textContent = String(card.msg || '');
@@ -307,15 +305,19 @@
     },
     ls: function(){
       print('');
-      print('$ ls -l farewell/', 'ps1');
+      print('$ ls farewell/', 'ps1');
       var me = (window.__card && window.__card.name || '').toLowerCase().replace(/[^a-z0-9]/g,'');
-      ((window.__card && window.__card.roster) || []).forEach(function(n){
+      var roster = (window.__card && window.__card.roster) || [];
+      var w = Math.max.apply(null, roster.map(function(n){ return n.length; })) + 4;
+      roster.forEach(function(n){
         var f = n.toLowerCase().replace(/[^a-z0-9]/g,'') + '.txt';
-        if(f.slice(0, -4) === me) print('  -rw-------  amelie  ' + f, 'warn');
-        else                      print('  -r--------  amelie  ' + f + '   (permission denied)', 'dim');
+        var pad = f + Array(Math.max(1, w - f.length + 2)).join(' ');
+        if(f.slice(0, -4) === me) print('  ' + pad + '← 你的', 'warn');
+        else                      print('  ' + pad + '🔒', 'dim');
       });
       print('');
-      print('  ' + (((window.__card && window.__card.roster) || []).length) + ' 個人，一人一張。你只打得開自己那一張。', 'dim');
+      print('  ' + roster.length + ' 個人，一人一張', 'dim');
+      print('  你只打得開自己那一張', 'dim');
       prompt();
     },
     uptime: function(){
@@ -327,11 +329,15 @@
       var rem = b.getDate() - a.getDate();
       print('');
       print('$ uptime', 'ps1');
-      print('  up ' + months + ' months, ' + rem + ' day  (' + days + ' days)', 'warn');
-      print('  since 2026-01-05, last login 2026-11-06', 'dim');
-      print('  projects: 誠品, 國泰, 糖蛙, 集保, 台達', 'dim');
-      print('  load average: 1.00, 1.00, 1.00', 'dim');
-      print('  0 regrets', 'dim');
+      print('  up ' + months + ' months, ' + rem + ' day', 'warn');
+      print('  (' + days + ' days)', 'warn');
+      print('');
+      print('  since      2026-01-05', 'dim');
+      print('  last login 2026-11-06', 'dim');
+      print('  projects   誠品 國泰 糖蛙', 'dim');
+      print('             集保 台達', 'dim');
+      print('  load avg   1.00 1.00 1.00', 'dim');
+      print('  regrets    0', 'dim');
       prompt();
     },
     contact: function(){
@@ -348,7 +354,7 @@
     },
     whoami: function(){
       print('');
-      reveal('你是一個願意掃陌生 QR code 的人。這很危險，但我很感謝。', 'warn', 200);
+      reveal('我是 amelie 你不知道嗎 😎', 'warn', 200);
       prompt();
     },
     sudo: function(){
@@ -511,8 +517,7 @@
   var token = (location.hash || '').replace(/^#/, '').trim();
 
   function boot(card){
-    say('$ ssh amelie@cloudmile --final', 'ps1', 16);   // 指令：逐字（它本來就是被輸入的）
-    wait(240);
+    reveal('$ ssh amelie@cloudmile --final', 'ps1', 300);
     print('Authenticating with card key… ok', 'dim'); wait(160);
     print('Mounting /farewell … ok', 'dim'); wait(300);
     print('');
@@ -550,7 +555,7 @@
       return boot(r.card);
     }
     if(r.kind === 'offline'){
-      say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
+      reveal('$ ssh amelie@cloudmile --final', 'ps1', 300);
       print('Authenticating with card key… connection failed', 'err'); wait(420);
       print('');
       reveal('連不上伺服器，拿不到你的卡片。', 'warn', 420);
@@ -560,7 +565,7 @@
       return;
     }
     var fb = await getFallback();
-    say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
+    reveal('$ ssh amelie@cloudmile --final', 'ps1', 300);
     print('Authenticating with card key… failed', 'err'); wait(400);
     print('');
     then(function(){ showCard(fb, {quiet:true}); });
