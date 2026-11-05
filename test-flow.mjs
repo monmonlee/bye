@@ -37,7 +37,7 @@ const document = {
   createElement: () => { const s = { className:'', _t:'',
       get textContent(){return this._t;}, set textContent(v){this._t=v;},
       getBoundingClientRect(){ return { top:0, left:0, width:0, height:0 }; },
-      setAttribute(){}, getContext(){ return { createImageData:(w,h)=>({data:new Uint8ClampedArray(Math.max(4,w*h*4))}), putImageData(){} }; },
+      style:{}, setAttribute(){}, getContext(){ return { createImageData:(w,h)=>({data:new Uint8ClampedArray(Math.max(4,w*h*4))}), putImageData(){} }; },
       __render(){ return this._t; } };
     spans.push(s);
     // out._text 需在 span 內容變動後才正確 → 改用最後統一收集

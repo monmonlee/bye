@@ -94,9 +94,12 @@
   @keyframes blink{50%{opacity:0}}
 
   .sprites{
-    display:block; margin:18px 0 4px;
-    width:auto; max-width:72%; height:auto;
-    image-rendering:pixelated; opacity:.9;
+    display:block; margin:20px 0 6px; max-width:100%; height:auto;
+    image-rendering:pixelated;
+  }
+  .lace{
+    display:block; width:100%; height:auto; margin:14px 0;
+    image-rendering:pixelated; opacity:.85;
   }
   #out a{ color:#8ff7b8; text-decoration:underline; text-underline-offset:3px; text-decoration-style:dotted; }
   #out a:active{ opacity:.6 }
@@ -259,6 +262,7 @@
       out.appendChild(anchor);
     });
     print('$ cat farewell/' + file + '.txt', 'ps1');
+    then(addLace);
     String(card.msg || '').split('\n').forEach(function(l){
       print(l, l === '' ? '' : 'card');        // 全文一次印出，不做動畫
     });
@@ -281,12 +285,23 @@
       print('');
       print('（這張卡只有你打得開。）', 'dim');
     }
+    then(addLace);
     then(function(){ addSprites(card); });
     prompt();
   }
 
   // 每封信結尾長出幾隻小動物。專屬的那隻固定出現，其餘從場景組隨機抽
   var OWN = { Clara:'熊貓', Iris:'守宮', Amber:'烏龜', Amelia:'兔子', Jimmy:'王冠' };
+  function addLace(){
+    if(!window.drawLace) return;
+    var cv = document.createElement('canvas');
+    cv.className = 'lace';
+    cv.setAttribute('aria-hidden','true');
+    drawLace(cv, '菱形', 130);
+    out.appendChild(cv);
+    out.appendChild(document.createTextNode('\n'));
+  }
+
   function addSprites(card){
     if(!window.SPRITES || !window.drawSpriteRow) return;
     var name = card && card.name || '';
@@ -303,6 +318,7 @@
     cv.className = 'sprites';
     cv.setAttribute('aria-hidden','true');
     drawSpriteRow(cv, pick);
+    cv.style.width = (cv.width * 5) + 'px';      // 固定 5 倍，每張卡的像素大小才一致
     out.appendChild(cv);
     out.appendChild(document.createTextNode('\n'));
     scroll();
