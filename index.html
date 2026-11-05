@@ -259,8 +259,8 @@
     var sp = len <= 120 ? 27 : Math.max(9, Math.round(27 * 120 / len));
     var file = (card.name || 'unknown').toLowerCase().replace(/[^a-z0-9]/g,'') || 'unknown';
     print('');
-    say('$ cat farewell/' + file + '.txt', 'ps1', 22);
-    wait(420);
+    say('$ cat farewell/' + file + '.txt', 'ps1', 18);
+    wait(380);
     String(card.msg || '').split('\n').forEach(function(l){
       if(l === '') print(''); else say(l, 'card', 27);
     });
@@ -276,7 +276,7 @@
     }
     if(!opts.quiet){
       print('');
-      say('（這張卡只有你打得開。）', 'dim', 16);
+      reveal('（這張卡只有你打得開。）', 'dim', 200);
     }
     prompt();
   }
@@ -348,7 +348,7 @@
     },
     whoami: function(){
       print('');
-      say('你是一個願意掃陌生 QR code 的人。這很危險，但我很感謝。', 'warn', 26);
+      reveal('你是一個願意掃陌生 QR code 的人。這很危險，但我很感謝。', 'warn', 200);
       prompt();
     },
     sudo: function(){
@@ -511,18 +511,19 @@
   var token = (location.hash || '').replace(/^#/, '').trim();
 
   function boot(card){
-    say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
-    print('Authenticating with card key… ok', 'dim'); wait(200);
-    print('Mounting /farewell … ok', 'dim'); wait(320);
+    say('$ ssh amelie@cloudmile --final', 'ps1', 16);   // 指令：逐字（它本來就是被輸入的）
+    wait(240);
+    print('Authenticating with card key… ok', 'dim'); wait(160);
+    print('Mounting /farewell … ok', 'dim'); wait(300);
     print('');
-    say('嗨嗨，今天我就要離職了～', '', 32); wait(420);
-    say('為感謝你在這段時間的協助，我寫了卡片給你', '', 32); wait(520);
+    reveal('嗨嗨，今天我就要離職了～', '', 520);            // 人話：整句出現
+    reveal('為感謝你在這段時間的協助，我寫了卡片給你', '', 700);
     print('');
-    say('for:', 'ps1', 34); wait(460);
-    say(card.name || 'unknown', 'to', 110); wait(800);
+    reveal('for:', 'ps1', 360);
+    reveal(card.name || 'unknown', 'to', 820);
     print('');
-    say('你的卡片已經在這台機器上了。', 'warn', 30); wait(300);
-    say('輸入 card 打開它。', 'warn', 30);
+    reveal('你的卡片已經在這台機器上了。', 'warn', 420);
+    reveal('輸入 card 打開它。', 'warn', 260);
     awaiting = true;
     prompt();
   }
@@ -552,8 +553,8 @@
       say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
       print('Authenticating with card key… connection failed', 'err'); wait(420);
       print('');
-      say('連不上伺服器，拿不到你的卡片。', 'warn', 30); wait(300);
-      say('不是你的連結有問題 —— 換個網路或重新整理再試一次。', 'warn', 30);
+      reveal('連不上伺服器，拿不到你的卡片。', 'warn', 420);
+      reveal('不是你的連結有問題 —— 換個網路或重新整理再試一次。', 'warn', 260);
       print('');
       print('（如果一直都這樣，直接來跟我說。）', 'dim');
       return;
