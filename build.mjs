@@ -52,6 +52,7 @@ if (lost.length) {
   process.exit(1);
 }
 const added = tokens.filter(t => !prev.has(t.key));
+writeFileSync('./.new-keys.json', JSON.stringify(added.map(t => t.key)));
 if (existing.length && added.length) {
   console.warn(`! 新增了 ${added.length} 人：${added.map(t => t.key).join(', ')}`);
   console.warn('  他們的 QR 還沒印，記得補印（舊的不受影響）。');
