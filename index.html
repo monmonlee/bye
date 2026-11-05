@@ -9,27 +9,27 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <style>
   :root{
-    --bg:#07100b; --fg:#5bf08a; --dim:#2e7d4f; --warn:#ffd166; --err:#ff6b6b;
-    --glow:0 0 6px rgba(91,240,138,.45);
+    --bg:#07100b; --fg:#6bf79a; --dim:#4aa471; --warn:#ffd166; --err:#ff6b6b;
+    --glow:0 0 3px rgba(91,240,138,.26);
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
     background:var(--bg); color:var(--fg); font-family:var(--mono);
-    font-size:15px; line-height:1.65; letter-spacing:.2px;
+    font-size:clamp(16px,4.3vw,18px); line-height:1.78; letter-spacing:.3px;
     text-shadow:var(--glow); overflow-x:hidden;
     -webkit-text-size-adjust:100%;
   }
   /* CRT 掃描線 + 暈影 */
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
-    background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.22) 2px 4px);
+    background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 3px,rgba(0,0,0,.10) 3px 6px);
     mix-blend-mode:multiply;
   }
   body::after{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:10;
-    background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.55) 100%);
+    background:radial-gradient(ellipse at 50% 50%,transparent 62%,rgba(0,0,0,.38) 100%);
   }
   #screen{
     position:relative; z-index:1; min-height:100%;
@@ -46,7 +46,9 @@
   .warn{color:var(--warn); text-shadow:0 0 6px rgba(255,209,102,.4)}
   .err{color:var(--err); text-shadow:0 0 6px rgba(255,107,107,.4)}
   .card{
-    border-left:2px solid var(--dim); padding:4px 0 4px 12px; margin:6px 0 2px;
+    border-left:2px solid var(--dim); padding:4px 0 4px 14px; margin:6px 0 2px;
+    color:#c9ffdd; text-shadow:none;
+    font-size:1.06em; line-height:1.85; letter-spacing:.4px;
   }
   .ps1{color:var(--dim)}
   .ps1 b{color:var(--fg); font-weight:400}
@@ -71,7 +73,7 @@
   #caret.off{opacity:.25; animation:none}
   @keyframes blink{50%{opacity:0}}
 
-  .hint{margin-top:16px; color:var(--dim); font-size:.86em; line-height:1.7}
+  .hint{margin-top:18px; color:var(--dim); font-size:.92em; line-height:1.75}
   .hint kbd{
     border:1px solid var(--dim); border-radius:3px; padding:0 4px; font:inherit; font-size:.95em;
   }
@@ -385,6 +387,12 @@
     say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
     print('Authenticating with card key… ok', 'dim'); wait(200);
     print('Mounting /farewell … ok', 'dim'); wait(320);
+    print('');
+    say('$ weather --location 萬里雲', 'ps1', 20); wait(520);
+    print('  天候    豔陽高照', 'warn'); wait(260);
+    print('  雲量    0%', 'warn'); wait(260);
+    print('  狀態    撥雲見日', 'warn'); wait(420);
+    say('  預報    今日起，萬里無雲', 'warn', 34); wait(620);
     print('');
     say('嗨嗨，今天我就要離職了～', '', 32); wait(420);
     say('為感謝你在這段時間的協助，我寫了卡片給你', '', 32); wait(520);
