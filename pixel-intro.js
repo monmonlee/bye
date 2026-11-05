@@ -38,13 +38,15 @@
     d += bump(v, 0.26, 0.075) * (0.60 + 0.40*Math.sin((u-drift*0.7)*5.1 + 3.4));
     d += bump(v, 0.37, 0.062) * (0.58 + 0.42*Math.sin((u+drift*1.3)*2.6 + 0.3));
     d += bump(v, 0.47, 0.050) * (0.55 + 0.45*Math.sin((u-drift)*7.4 + 2.0));
+    // 大面積雲幕：讓開場整片天都是雲，而不是幾條帶子
+    d += bump(v, 0.30, 0.230) * (0.34 + 0.22*Math.sin((u + drift*0.4)*2.1 + 0.9));
     return Math.max(0, Math.min(1.15, d));
   }
 
   /* 撥開：以太陽為中心向兩側退開的缺口，open 0→1 */
   function gapMask(u, v, open){
-    var half = 0.04 + 0.70*open;                 // 缺口半寬
-    var edge = 0.10 + 0.14*open;                 // 邊緣羽化
+    var half = 0.75*open;                        // 缺口半寬（t=0 完全閉合）
+    var edge = 0.08 + 0.17*open;                 // 邊緣羽化
     var dx = Math.abs(u - SUN_X);
     return 1 - smoothstep(half - edge, half, dx); // 1 = 完全撥開
   }
@@ -72,8 +74,8 @@
     val += (0.40 + 0.30*t) * Math.exp(-Math.pow(d/(sunR*3.6), 2)) * (1 - 0.70*occl);
 
     // 雲本身：被照亮的一面偏亮，背光偏暗
-    var lit = Math.exp(-Math.pow(d/0.46, 2));
-    val = val*(1 - 0.58*cloud) + cloud*(0.31 + 0.46*lit + 0.16*t);
+    var lit = Math.exp(-Math.pow(d/0.26, 2));
+    val = val*(1 - 0.62*cloud) + cloud*(0.21 + 0.40*lit + 0.14*t);
 
     var r = ridge(u);
     if (v > r) {

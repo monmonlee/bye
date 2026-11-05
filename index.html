@@ -84,6 +84,24 @@
     transition:opacity .32s linear;
   }
   #px.on{display:block}
+  #pxtitle{
+    position:fixed; inset:0; z-index:21; display:none;
+    align-items:center; justify-content:center; flex-direction:column; gap:14px;
+    pointer-events:none; text-align:center; padding:0 18px;
+  }
+  #pxtitle.on{display:flex}
+  #pxtitle .t{
+    font-family:var(--mono); font-weight:700;
+    font-size:clamp(38px,13vw,84px); letter-spacing:.3em; text-indent:.3em;
+    color:#f6e2bf; text-shadow:3px 3px 0 rgba(16,18,36,.92), 0 0 18px rgba(242,214,173,.28);
+    opacity:0;
+  }
+  #pxtitle .sub{
+    font-family:var(--mono); font-size:clamp(13px,3.6vw,18px); letter-spacing:.42em; text-indent:.42em;
+    color:#f2d6ad; opacity:0; text-shadow:2px 2px 0 rgba(16,18,36,.92);
+  }
+  #pxtitle .show{ animation:popin .28s steps(3) forwards; }
+  @keyframes popin{ from{opacity:0; transform:translateY(6px) scale(.96)} to{opacity:1; transform:none} }
   #pxhint{
     position:fixed; z-index:21; left:0; right:0; bottom:calc(22px + env(safe-area-inset-bottom));
     text-align:center; color:#f2d6ad; opacity:.55; font-size:11px; letter-spacing:2px;
@@ -118,6 +136,7 @@
   </div>
 </div>
 <canvas id="px" aria-hidden="true"></canvas>
+<div id="pxtitle"><div class="t"></div><div class="sub"></div></div>
 <div id="pxhint">TAP TO SKIP</div>
 <button id="skip" type="button">跳過動畫 ▸▸</button>
 
@@ -333,12 +352,36 @@
     cv.width = W; cv.height = H;
     var img = ctx2d.createImageData(W, H);
 
+    var tt = document.getElementById('pxtitle');
+    var ttMain = tt.querySelector('.t'), ttSub = tt.querySelector('.sub');
+
     cv.classList.add('on');
     setTimeout(function(){ pxhint.classList.add('on'); }, 900);
 
-    // 時間軸（毫秒）
-    var T_WIPE = 900, T_SUN = 1300, T_BREAK = 900, T_FADE = 320;
-    var TOTAL = T_WIPE + T_SUN + T_BREAK;
+    // 時間軸（毫秒）：掃描線拉開 → 撥雲見日 → 滿版字幕 → 碎解
+    var T_WIPE = 800, T_SUN = 1500, T_TITLE = 2700, T_BREAK = 800, T_FADE = 320;
+    var TOTAL = T_WIPE + T_SUN + T_TITLE + T_BREAK;
+
+    // 滿版字幕：一段一句，最後一句是梗
+    var TITLES = [
+      { t:'豔陽高照', sub:'' },
+      { t:'撥雲見日．．', sub:'' },
+      { t:'萬里無雲', sub:'萬里雲，再見' }
+    ];
+    var shownBeat = -1;
+    function beat(i){
+      if(i === shownBeat) return;
+      shownBeat = i;
+      if(i < 0 || i >= TITLES.length){ tt.classList.remove('on'); return; }
+      var b = TITLES[i];
+      tt.classList.add('on');
+      ttMain.classList.remove('show'); ttSub.classList.remove('show');
+      void ttMain.offsetWidth;                       // 重啟動畫
+      ttMain.textContent = b.t;
+      ttSub.textContent = b.sub;
+      ttMain.classList.add('show');
+      if(b.sub) setTimeout(function(){ ttSub.classList.add('show'); }, 420);
+    }
 
     return new Promise(function(resolve){
       var start = performance.now(), done = false, raf = 0;
@@ -348,6 +391,7 @@
         cancelAnimationFrame(raf);
         document.removeEventListener('pointerdown', onTap, true);
         pxhint.classList.remove('on');
+        tt.classList.remove('on');
         cv.style.opacity = '0';
         setTimeout(function(){ cv.classList.remove('on'); resolve(); }, T_FADE);
       }
@@ -364,9 +408,15 @@
         } else if(e < T_WIPE + T_SUN){
           var s = (e - T_WIPE) / T_SUN;
           p.reveal = 1; p.t = 0.18 + 0.82 * s;
+        } else if(e < T_WIPE + T_SUN + T_TITLE){
+          // 畫面定格在豔陽，字幕一句一句打出來
+          p.reveal = 1; p.t = 1;
+          beat(Math.min(TITLES.length - 1,
+                        Math.floor((e - T_WIPE - T_SUN) / (T_TITLE / TITLES.length))));
         } else {
-          var b = Math.min(1, (e - T_WIPE - T_SUN) / T_BREAK);
-          p.reveal = 1; p.t = 1; p.dissolve = b; p.tint = Math.min(1, b * 1.25);
+          var b2 = Math.min(1, (e - T_WIPE - T_SUN - T_TITLE) / T_BREAK);
+          p.reveal = 1; p.t = 1; p.dissolve = b2; p.tint = Math.min(1, b2 * 1.25);
+          if(b2 > 0.45) beat(-1);
         }
         PI.renderFrame(img, W, H, p);
         ctx2d.putImageData(img, 0, 0);
@@ -387,12 +437,6 @@
     say('$ ssh amelie@cloudmile --final', 'ps1', 18); wait(260);
     print('Authenticating with card key… ok', 'dim'); wait(200);
     print('Mounting /farewell … ok', 'dim'); wait(320);
-    print('');
-    say('$ weather --location 萬里雲', 'ps1', 20); wait(520);
-    print('  天候    豔陽高照', 'warn'); wait(260);
-    print('  雲量    0%', 'warn'); wait(260);
-    print('  狀態    撥雲見日', 'warn'); wait(420);
-    say('  預報    今日起，萬里無雲', 'warn', 34); wait(620);
     print('');
     say('嗨嗨，今天我就要離職了～', '', 32); wait(420);
     say('為感謝你在這段時間的協助，我寫了卡片給你', '', 32); wait(520);
