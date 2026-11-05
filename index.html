@@ -115,7 +115,7 @@
   </div>
 
   <div class="hint" id="hint" hidden>
-    想玩的話可以輸入 <kbd>help</kbd>。
+    想再看一次輸入 <kbd>card</kbd>，想玩輸入 <kbd>help</kbd>。
   </div>
 </div>
 <canvas id="px" aria-hidden="true"></canvas>
@@ -238,41 +238,18 @@
     help: function(){
       print('');
       print('可用指令：', 'dim');
-      ['  again      再放一次你的卡片',
-       '  ls         看看 farewell/ 裡有什麼',
+      ['  card       再看一次你的卡片',
        '  whoami     ？',
-       '  clear      清螢幕',
-       '  credits    這東西是誰做的',
-       '  （還有幾個沒寫在這，自己試）'].forEach(function(l){ print(l, 'dim'); });
+       '  （還有一個沒寫在這，自己試）'].forEach(function(l){ print(l, 'dim'); });
       prompt();
     },
-    again: function(){ if(window.__card) showCard(window.__card, {quiet:true}); else { print(''); print('沒有可以重播的卡片。','dim'); prompt(); } },
-    ls: function(){
-      print('');
-      print('farewell/', 'dim');
-      print('  16 files, 0 regrets', 'dim');
-      print('  （其他 15 個你打不開，那是別人的。）', 'dim');
-      prompt();
+    card: function(){
+      if(window.__card) showCard(window.__card, {quiet:true});
+      else { print(''); print('沒有可以重播的卡片。','dim'); prompt(); }
     },
     whoami: function(){
       print('');
       say('你是一個願意掃陌生 QR code 的人。這很危險，但我很感謝。', 'warn', 26);
-      prompt();
-    },
-    clear: function(){ out.textContent = ''; prompt(); },
-    credits: function(){
-      print('');
-      ['built in one night with Claude Code',
-       'by amelie, on her last day',
-       'stack: 一個 html、一包 AES-GCM、零個後端'].forEach(function(l){ print(l, 'dim'); });
-      prompt();
-    },
-    exit: function(){
-      print('');
-      say('logout', 'dim', 20); wait(400);
-      say('Connection to cloudmile closed.', 'dim', 22); wait(700);
-      print('');
-      say('…騙你的。關掉分頁才算數。', 'warn', 26);
       prompt();
     },
     sudo: function(){
@@ -280,16 +257,7 @@
       print('amelie is not in the sudoers file.', 'err');
       print('This incident has been reported.（報給誰？我已經離職了。）', 'err');
       prompt();
-    },
-    rm: function(raw){
-      print('');
-      if(/-rf?\b/.test(raw)){
-        say('rm: 正在刪除 /…', 'err', 30); wait(800);
-        print('rm: 開玩笑的。這裡沒有東西可以刪，只有話可以說。', 'warn');
-      } else print('rm: 這台機器唯讀。', 'dim');
-      prompt();
-    },
-    cat: function(){ print(''); print('cat: 你只有一張卡的讀取權限。試試 again。', 'dim'); prompt(); }
+    }
   };
 
   function handle(raw){
@@ -309,7 +277,7 @@
       line.classList.remove('hide');
       hint.hidden = false;
       cmd.value = '';
-      cmd.placeholder = 'help';
+      cmd.placeholder = 'card';
       setTimeout(scroll, 0);
     });
   }
