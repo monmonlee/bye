@@ -35,7 +35,7 @@ const cells = tokens.map(t => {
   return `<div class="cell">
   <div class="name">${esc(t.name)}</div>
   <svg class="qr" viewBox="${vb}" shape-rendering="crispEdges">${inner}${badge}</svg>
-  <div class="foot">掃我 · 這張只有你打得開</div>
+  <div class="foot">掃我 ＼(^▽^)／</div>
 </div>`;
 }).join('\n');
 
@@ -53,7 +53,7 @@ const sheet = `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
   }
   .name{font-size:15pt;font-weight:600;letter-spacing:1px}
   .qr{width:40mm;height:40mm;display:block}
-  .foot{font-size:8pt;color:#777;letter-spacing:.3px}
+  .foot{font-size:10pt;color:#555;letter-spacing:.3px}
   .tip{font-size:8pt;color:#999;margin:0 0 3mm}
   @media print{ .tip{display:none} }
 </style></head><body>
