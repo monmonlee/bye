@@ -1,5 +1,15 @@
 # farewell terminal
 
+> **換電腦後從這裡開始。** 這個專案分散在三個 repo：
+>
+> | repo | 公開 | 內容 |
+> |---|---|---|
+> | [monmonlee/bye](https://github.com/monmonlee/bye) | public | 網站本體（這裡）。加密後的卡片、前端、sprite、工具 |
+> | [monmonlee/bye-secrets](https://github.com/monmonlee/bye-secrets) | private | `tokens.json`＋`cards.src.js`。**弄丟＝已印的 QR 全廢** |
+> | [monmonlee/claude-setup](https://github.com/monmonlee/claude-setup) | private | Claude 的 CLAUDE.md、memory、自己寫的 skill |
+>
+> 線上：https://monmonlee.github.io/bye/　樣品冊：見下方「設計樣品」
+
 離職道別小卡 —— 一人一張 QR，掃進去是一個終端機介面，打字機吐出寫給他的話。
 
 ## 怎麼改內容
@@ -46,3 +56,33 @@ node test-anim.mjs    # 整段動畫跑一遍，抓執行期錯誤、確認有�
 - `robots.txt` + `noindex` 擋搜尋引擎收錄。
 
 拿到別人 QR 的人當然看得到那張卡 —— 實體小卡本來就是這樣。
+
+
+## 新電腦怎麼接手
+
+```bash
+git clone https://github.com/monmonlee/bye.git
+git clone https://github.com/monmonlee/bye-secrets.git
+cp bye-secrets/tokens.json bye-secrets/cards.src.js bye/
+cd bye && node build.mjs && node make-cards.mjs
+```
+
+`gh auth login` 要登 **monmonlee**（不是公司帳號），git email 用個人 gmail。
+
+## 設計樣品
+
+字型／花邊／sprite 的比較頁發布在 Claude Artifact：
+https://claude.ai/code/artifact/3a6d980b-22bc-4520-afa1-44a3b681c175
+（原始檔 `_sample-book.html` 沒進 repo，因為內嵌了第三方字型子集）
+
+## 用到的字型
+
+動畫字幕目前是系統字型二值化。想換成真正的像素字型，三款免費開源的：
+
+| 字型 | 來源 | 授權 |
+|---|---|---|
+| Cubic 11（台灣製，推薦） | https://github.com/ACh-K/Cubic-11 | OFL |
+| Zpix 最像素 | https://github.com/SolidZORO/zpix-pixel-font | OFL |
+| Fusion Pixel 12px | https://github.com/TakWolf/fusion-pixel-font | OFL |
+
+整段動畫只用到 15 個字，用 `pyftsubset` 裁切後約 1.5 KB，可直接內嵌。
